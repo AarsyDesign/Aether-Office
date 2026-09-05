@@ -607,9 +607,16 @@ class OfficeDashboardHub:
 
         return run_info
 
+    def _get_projects_dir(self) -> Path:
+        """Get the resolved projects directory from configuration."""
+        out_cfg = self.config.get("project", {}).get("output_dir", "./projects")
+        p = Path(out_cfg)
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
     def list_real_projects(self) -> List[Dict[str, Any]]:
-        """List all generated real projects from the projects/ directory."""
-        projects_dir = Path("projects")
+        """List all generated real projects from the projects directory."""
+        projects_dir = self._get_projects_dir()
         if not projects_dir.exists():
             return []
 
@@ -663,7 +670,7 @@ class OfficeDashboardHub:
 
     def get_project_files(self, project_id: str) -> Dict[str, Any]:
         """Get file contents for a generated project."""
-        p = Path("projects") / project_id
+        p = self._get_projects_dir() / project_id
         if not p.exists() or not p.is_dir():
             raise FileNotFoundError(f"Project directory {project_id} not found")
 
@@ -687,7 +694,7 @@ class OfficeDashboardHub:
     def run_project_tests(self, project_id: str) -> Dict[str, Any]:
         """Execute pytest directly against generated project files."""
         import subprocess
-        p = Path("projects") / project_id
+        p = self._get_projects_dir() / project_id
         if not p.exists():
             return {"success": False, "error": "Project not found"}
 
