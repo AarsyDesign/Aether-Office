@@ -1,0 +1,108 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aether-office"
+version = "1.0.0"
+description = "Autonomous Multi-Agent AI Office & Adaptive Planning Engine"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Arsyad", email = "developer@example.com" }
+]
+keywords = [
+    "ai-agent",
+    "multi-agent",
+    "autonomous-office",
+    "adaptive-planning",
+    "task-scheduling",
+    "llm-orchestration",
+    "workforce-management",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Distributed Computing",
+]
+
+dependencies = [
+    "requests>=2.31.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.scripts]
+aether = "cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-username/aether-office"
+Repository = "https://github.com/your-username/aether-office.git"
+Issues = "https://github.com/your-username/aether-office/issues"
+
+[tool.setuptools]
+py-modules = [
+    "adaptive_planner",
+    "analysis",
+    "artifacts",
+    "budget",
+    "cli",
+    "db",
+    "delegation",
+    "discussion",
+    "evaluator",
+    "events",
+    "factory",
+    "handoff",
+    "llm",
+    "matcher",
+    "milestone_gate",
+    "model_resolver",
+    "objective_orchestrator",
+    "objectives",
+    "office",
+    "office_queue",
+    "orchestrator",
+    "plan_evaluator",
+    "planner",
+    "projects",
+    "prompt_builder",
+    "registry",
+    "resources",
+    "result",
+    "reviews",
+    "runtime",
+    "scheduler",
+    "status",
+    "strategies",
+    "tasks",
+    "team",
+    "usage",
+    "workflow",
+    "workforce",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

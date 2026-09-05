@@ -1,0 +1,22 @@
+# Aether Office Configuration Template
+# Copy this file to `config.yaml` and adjust settings according to your environment.
+
+llm:
+  # OpenAI-compatible API endpoint (e.g. OpenAI, vLLM, Ollama, LM Studio, or local proxy)
+  endpoint: "http://localhost:11434/v1"
+  api_key: "your-api-key-here"
+  model: "llama3"
+  temperature: 0.7
+  max_tokens: 4096
+
+developer:
+  unit_max_retries: 2    # Maximum retries per code generation unit
+
+project:
+  output_dir: "./projects"
+  data_dir: "./data"
+  docs_dir: "./shared-docs"
+
+qa:
+  max_retries: 3
+  run_tests: true

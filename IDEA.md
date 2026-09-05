@@ -1,0 +1,1 @@
+Membangun sebuah AI Development Company virtual yang dapat menerima ide software dari manusia, menganalisisnya, merancangnya, mengimplementasikannya, mengujinya, dan melakukan deployment secara terkoordinasi menggunakan tim AI dengan berbagai role.
