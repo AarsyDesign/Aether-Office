@@ -313,11 +313,19 @@ def call_llm_with_retry(
 
 
 class LLMClient:
-    """Reusable LLM client with config."""
+    """Reusable LLM client supporting single endpoints or central LLM Routers (with multiple models)."""
 
-    def __init__(self, endpoint: str, api_key: str, model: str,
-                 temperature: float = 0.7, max_tokens: int = 4096,
-                 max_retries: int = 3, timeout: int = 300):
+    def __init__(
+        self,
+        endpoint: str,
+        api_key: str,
+        model: str,
+        temperature: float = 0.7,
+        max_tokens: int = 4096,
+        max_retries: int = 3,
+        timeout: int = 300,
+        models: dict | None = None,
+    ):
         self.endpoint = endpoint
         self.api_key = api_key
         self.model = model
@@ -325,9 +333,69 @@ class LLMClient:
         self.max_tokens = max_tokens
         self.max_retries = max_retries
         self.timeout = timeout
+        self.models = dict(models) if models else {}
 
-    def chat(self, system: str, user: str | None = None, json_mode: bool = False) -> str | dict:
-        """Single-turn chat. Returns str or dict (json_mode)."""
+    def for_model(self, model_name: str) -> "LLMClient":
+        """Spawn a new LLMClient sharing the same router credentials but targeting a different model."""
+        return LLMClient(
+            endpoint=self.endpoint,
+            api_key=self.api_key,
+            model=model_name,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            max_retries=self.max_retries,
+            timeout=self.timeout,
+            models=self.models,
+        )
+
+    def for_role(self, role: str) -> "LLMClient":
+        """Resolve and return an LLMClient instance configured for a specific role on this router."""
+        if not self.models:
+            return self
+        role_lower = (role or "").lower()
+        target = self.models.get(role_lower)
+        if not target and "_" in role_lower:
+            for part in role_lower.split("_"):
+                if part in self.models:
+                    target = self.models[part]
+                    break
+        if not target:
+            target = self.models.get("default", self.model)
+        if target and target != self.model:
+            return self.for_model(target)
+        return self
+
+    def list_available_models(self) -> list[str]:
+        """Query the router's /models endpoint to discover all routed models."""
+        if self.endpoint.startswith("mock://") or os.environ.get("AETHER_MOCK_LLM") == "1":
+            return ["mock-model", "mock-fast", "mock-smart"]
+        try:
+            url = f"{self.endpoint.rstrip('/')}/models"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+            resp = requests.get(url, headers=headers, timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_models = data.get("data", [])
+                if isinstance(raw_models, list):
+                    return [
+                        m.get("id") for m in raw_models
+                        if isinstance(m, dict) and "id" in m
+                    ]
+        except Exception as e:
+            logger.debug(f"Could not query router models at {self.endpoint}: {e}")
+        return []
+
+    def chat(
+        self,
+        system: str,
+        user: str | None = None,
+        json_mode: bool = False,
+        model: str | None = None,
+    ) -> str | dict:
+        """Single-turn chat. Supports router model override."""
         if isinstance(user, bool):
             json_mode = user
             user = None
@@ -338,16 +406,23 @@ class LLMClient:
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ]
+        target_model = model or self.model
         result, _usage = call_llm_with_retry(
-            self.endpoint, self.api_key, self.model, messages,
+            self.endpoint, self.api_key, target_model, messages,
             self.temperature, self.max_tokens, json_mode, self.timeout, self.max_retries,
         )
         return result
 
-    def chat_multi(self, messages: list[dict], json_mode: bool = False) -> str | dict:
-        """Multi-turn chat. Returns str or dict (json_mode)."""
+    def chat_multi(
+        self,
+        messages: list[dict],
+        json_mode: bool = False,
+        model: str | None = None,
+    ) -> str | dict:
+        """Multi-turn chat. Supports router model override."""
+        target_model = model or self.model
         result, _usage = call_llm_with_retry(
-            self.endpoint, self.api_key, self.model, messages,
+            self.endpoint, self.api_key, target_model, messages,
             self.temperature, self.max_tokens, json_mode, self.timeout, self.max_retries,
         )
         return result

@@ -198,8 +198,18 @@
             <label for="proj-mode">Execution Engine</label>
             <select id="proj-mode" class="retro-select">
               <option value="mock" selected>⚡ Ultra-Fast Local Engine (Mock Simulation - Instant & 100% Reliable)</option>
-              <option value="llm">🧠 Live LLM Engine (Requires active server at config.yaml endpoint)</option>
+              <option value="llm">🧠 Live LLM Engine (Central Router at config.yaml endpoint)</option>
             </select>
+          </div>
+
+          <div class="form-group" id="group-proj-model" style="display: none;">
+            <label for="proj-model">LLM Router Model</label>
+            <select id="proj-model" class="retro-select">
+              <option value="gratisan">gratisan (Default)</option>
+            </select>
+            <small style="color: #94a3b8; font-size: 11px; margin-top: 4px; display: block;">
+              Central Router: <span id="router-endpoint-label" style="color: #06b6d4;">http://localhost:20128/v1</span>
+            </small>
           </div>
 
           <div class="modal-callout">

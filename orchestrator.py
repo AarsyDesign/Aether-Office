@@ -49,28 +49,36 @@ class Orchestrator:
         db_path = config.get("project", {}).get("data_dir", "./data") + "/tasks.db"
         self.db = Database(db_path, event_bus=self.event_bus)
 
-        # Init LLM
-        llm_cfg = config["llm"]
+        # Init LLM (Router)
+        llm_cfg = config.get("llm", {})
         self.llm = LLMClient(
             endpoint=llm_cfg["endpoint"],
             api_key=llm_cfg["api_key"],
-            model=llm_cfg["model"],
+            model=llm_cfg.get("model", "default"),
             temperature=llm_cfg.get("temperature", 0.7),
             max_tokens=llm_cfg.get("max_tokens", 4096),
             max_retries=llm_cfg.get("max_retries", 3),
             timeout=llm_cfg.get("timeout", 300),
+            models=llm_cfg.get("models"),
         )
 
         self.factory = AgentFactory(organization=self.org)
 
-        # Init agents with agent identities and event_bus
-        self.pm = PMAgent(self.llm, self.db, project_id, str(output_dir),
+        # Init agents with role-routed LLM clients from the router
+        # When self.llm is mocked in unit tests, preserve the original mock
+        is_real_client = type(self.llm).__name__ == "LLMClient" and not hasattr(self.llm, "_mock_return_value")
+        pm_llm = self.llm.for_role("pm") if is_real_client else self.llm
+        conceptor_llm = self.llm.for_role("conceptor") if is_real_client else self.llm
+        dev_llm = self.llm.for_role("developer") if is_real_client else self.llm
+        qa_llm = self.llm.for_role("qa") if is_real_client else self.llm
+
+        self.pm = PMAgent(pm_llm, self.db, project_id, str(output_dir),
                           agent_id="pm_001", event_bus=self.event_bus)
-        self.conceptor = ConceptorAgent(self.llm, self.db, project_id, str(output_dir),
+        self.conceptor = ConceptorAgent(conceptor_llm, self.db, project_id, str(output_dir),
                                         agent_id="conceptor_001", event_bus=self.event_bus)
-        self.developer = DeveloperAgent(self.llm, self.db, project_id, str(output_dir), config,
+        self.developer = DeveloperAgent(dev_llm, self.db, project_id, str(output_dir), config,
                                         agent_id="developer_001", event_bus=self.event_bus)
-        self.qa = QAAgent(self.llm, self.db, project_id, str(output_dir),
+        self.qa = QAAgent(qa_llm, self.db, project_id, str(output_dir),
                           agent_id="qa_001", event_bus=self.event_bus)
 
         self.max_retries = config.get("qa", {}).get("max_retries", 3)

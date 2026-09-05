@@ -177,6 +177,7 @@ Eksekusi CLI global `aether` atau `python cli.py`:
 | `aether departments` | Menampilkan 8 divisi organisasi |
 | `aether track --role developer "Task"` | Mengirim sinyal telemetri eksternal ke virtual office |
 | `aether cron` | Mengelola dan mengecek jadwal background cron jobs |
+| `aether models` *(alias: `router`)* | Menampilkan status LLM Router dan daftar model yang tersedia |
 | `aether list` | Melihat daftar seluruh proyek yang pernah dibuat |
 | `aether status <project_id>` | Memeriksa rincian task dan status proyek |
 
@@ -187,14 +188,14 @@ Eksekusi CLI global `aether` atau `python cli.py`:
 Aether Office menerapkan **Zero Regression Policy**:
 
 ```bash
-# Menjalankan seluruh test suite (253 tests):
+# Menjalankan seluruh test suite (255 tests):
 pytest -v
 # atau:
 npm test
 ```
 
 ```text
-======================= 253 passed, 1 warning in 45.73s =======================
+======================= 255 passed in 68.58s =======================
 ```
 
 Mencakup:

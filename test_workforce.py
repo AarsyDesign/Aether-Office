@@ -354,6 +354,23 @@ class TestModelResolver(unittest.TestCase):
         # Provider inherited from global
         self.assertEqual(resolved["provider"], "openai-compatible")
 
+    def test_router_role_model_mapping(self):
+        global_cfg = {
+            "llm": {
+                "endpoint": "http://router:20128/v1",
+                "api_key": "sk-router",
+                "model": "gratisan",
+                "models": {
+                    "developer": "qwen2.5-coder",
+                    "qa": "mistral-small",
+                }
+            }
+        }
+        role_dev = Role(role_id="developer", name="Dev", department="engineering")
+        resolved = resolve_model_config(role=role_dev, global_config=global_cfg)
+        self.assertEqual(resolved["model"], "qwen2.5-coder")
+        self.assertEqual(resolved["endpoint"], "http://router:20128/v1")
+
 
 # =====================================================================
 # 7. Agent Factory & Generic Agent Tests

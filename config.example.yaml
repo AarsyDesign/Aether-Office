@@ -1,13 +1,29 @@
 # Aether Office Configuration Template
 # Copy this file to `config.yaml` and adjust settings according to your environment.
 
+# Central LLM Router / Gateway Configuration
+# Works with any OpenAI-compatible router (e.g. OneAPI, NewAPI, LiteLLM, OpenRouter, Ollama)
+# The endpoint and api_key below connect to the router itself.
+# Multiple models can be called through this single router.
 llm:
-  # OpenAI-compatible API endpoint (e.g. OpenAI, vLLM, Ollama, LM Studio, or local proxy)
-  endpoint: "http://localhost:11434/v1"
-  api_key: "your-api-key-here"
-  model: "llama3"
+  endpoint: "http://localhost:20128/v1"
+  api_key: "your-router-api-key-here"
+  model: "gratisan"              # Default fallback model on the router
   temperature: 0.7
   max_tokens: 4096
+  timeout: 300
+  max_retries: 3
+
+  # Optional: Route specific workforce roles to different models on the router
+  models:
+    default: "gratisan"
+    pm: "gratisan"
+    conceptor: "gratisan"
+    developer: "gratisan"        # e.g., coding-specific model
+    qa: "gratisan"               # e.g., testing/validation model
+    planning: "gratisan"         # e.g., deep reasoning model
+    smart: "gratisan"            # e.g., flagship model
+    fast: "gratisan"             # e.g., lightweight model
 
 developer:
   unit_max_retries: 2    # Maximum retries per code generation unit

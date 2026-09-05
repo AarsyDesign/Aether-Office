@@ -44,6 +44,26 @@ def resolve_model_config(
         llm_cfg = global_config.get("llm", global_config)
         resolved.update(_clean_dict(llm_cfg))
 
+        # Check if the router defines role-specific models
+        models_map = llm_cfg.get("models")
+        if isinstance(models_map, dict):
+            role_key = None
+            if role and hasattr(role, "role_id"):
+                role_key = role.role_id
+            elif employee and hasattr(employee, "role"):
+                role_key = employee.role
+
+            if role_key:
+                role_lower = str(role_key).lower()
+                matched = models_map.get(role_lower)
+                if not matched and "_" in role_lower:
+                    for part in role_lower.split("_"):
+                        if part in models_map:
+                            matched = models_map[part]
+                            break
+                if matched:
+                    resolved["model"] = matched
+
     # 2. Organization default
     if organization and hasattr(organization, "default_model"):
         resolved.update(_clean_dict(organization.default_model))

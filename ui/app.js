@@ -368,6 +368,19 @@ class AetherGameDashboard {
       }
     });
 
+    const projModeSelect = document.getElementById("proj-mode");
+    const groupProjModel = document.getElementById("group-proj-model");
+    if (projModeSelect && groupProjModel) {
+      projModeSelect.addEventListener("change", () => {
+        if (projModeSelect.value === "llm") {
+          groupProjModel.style.display = "block";
+          this.fetchRouterModels();
+        } else {
+          groupProjModel.style.display = "none";
+        }
+      });
+    }
+
     const formLaunchProj = document.getElementById("form-launch-project");
     formLaunchProj.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -501,15 +514,39 @@ class AetherGameDashboard {
     }
   }
 
+  async fetchRouterModels() {
+    try {
+      const res = await fetch("/api/llm/router");
+      if (!res.ok) return;
+      const data = await res.json();
+      const modelSelect = document.getElementById("proj-model");
+      const routerLabel = document.getElementById("router-endpoint-label");
+      if (routerLabel && data.endpoint) {
+        const count = data.available_models ? data.available_models.length : 0;
+        routerLabel.textContent = `${data.endpoint} (${count} Models Available)`;
+      }
+      if (modelSelect && Array.isArray(data.available_models) && data.available_models.length > 0) {
+        modelSelect.innerHTML = data.available_models.map(m => {
+          const isDef = m === data.default_model;
+          return `<option value="${m}" ${isDef ? "selected" : ""}>${m} ${isDef ? "(Default)" : ""}</option>`;
+        }).join("");
+      }
+    } catch (err) {
+      console.warn("Could not load router models:", err);
+    }
+  }
+
   async submitLaunchRealProject() {
     const nameInput = document.getElementById("proj-name");
     const briefInput = document.getElementById("proj-brief");
     const modeSelect = document.getElementById("proj-mode");
+    const modelSelect = document.getElementById("proj-model");
 
     const payload = {
       name: nameInput.value.trim(),
       brief: briefInput.value.trim(),
       mode: modeSelect.value,
+      model: modeSelect.value === "llm" && modelSelect ? modelSelect.value : undefined,
     };
 
     if (!payload.brief) {
@@ -529,7 +566,8 @@ class AetherGameDashboard {
       const data = await res.json();
 
       if (this.elTickerText) {
-        this.elTickerText.textContent = `🚀 REAL BUILD STARTED: ${data.project.project_id} (Mode: ${payload.mode})  ✦  ${this.elTickerText.textContent}`;
+        const modelNote = payload.model ? ` [${payload.model}]` : "";
+        this.elTickerText.textContent = `🚀 REAL BUILD STARTED: ${data.project.project_id} (Mode: ${payload.mode}${modelNote})  ✦  ${this.elTickerText.textContent}`;
       }
 
       this.activeTab = "projects";

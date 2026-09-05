@@ -524,6 +524,7 @@ class OfficeDashboardHub:
         name: str,
         brief: str,
         mode: str = "mock",
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Launch a real multi-agent project in background thread."""
         import copy
@@ -546,6 +547,7 @@ class OfficeDashboardHub:
             "name": clean_name,
             "brief": brief,
             "mode": mode,
+            "model": model,
             "status": "RUNNING",
             "start_time": time.time(),
             "output_dir": str(output_dir),
@@ -561,6 +563,8 @@ class OfficeDashboardHub:
                 if mode == "mock":
                     cfg.setdefault("llm", {})["endpoint"] = "mock://offline"
                     cfg.setdefault("llm", {})["mock"] = True
+                elif model:
+                    cfg.setdefault("llm", {})["model"] = model
                 orch = Orchestrator(cfg, project_id, str(output_dir))
                 # Forward all pipeline events to dashboard hub event bus & SSE
                 orch.event_bus.subscribe(lambda evt: self.event_bus.publish(evt))
@@ -713,6 +717,46 @@ class OfficeDashboardHub:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def get_llm_router_info(self) -> Dict[str, Any]:
+        """Query and return LLM Router configuration and available models."""
+        llm_cfg = self.config.get("llm", {})
+        endpoint = llm_cfg.get("endpoint", "")
+        api_key = llm_cfg.get("api_key", "")
+        default_model = llm_cfg.get("model", "default")
+        models_map = llm_cfg.get("models", {})
+
+        available_models = []
+        is_online = False
+        if endpoint and not endpoint.startswith("mock://"):
+            try:
+                import httpx
+                resp = httpx.get(
+                    f"{endpoint.rstrip('/')}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                    timeout=3.0,
+                )
+                if resp.status_code == 200:
+                    is_online = True
+                    data = resp.json()
+                    available_models = [
+                        m.get("id") for m in data.get("data", [])
+                        if isinstance(m, dict) and "id" in m
+                    ]
+            except Exception as e:
+                logger.debug(f"Router query check failed: {e}")
+
+        # If offline or query failed, ensure at least default model is listed
+        if not available_models and default_model:
+            available_models = [default_model]
+
+        return {
+            "endpoint": endpoint,
+            "default_model": default_model,
+            "models_map": models_map,
+            "is_online": is_online,
+            "available_models": available_models,
+        }
+
 
 # Initialize FastAPI app instance
 def create_app(hub: Optional[OfficeDashboardHub] = None) -> FastAPI:
@@ -841,10 +885,16 @@ def create_app(hub: Optional[OfficeDashboardHub] = None) -> FastAPI:
         name = data.get("name", "project")
         brief = data.get("brief", "")
         mode = data.get("mode", "mock")
+        model = data.get("model")
         if not brief.strip():
             raise HTTPException(status_code=400, detail="Project brief is required")
-        run_info = hub.launch_real_project(name=name, brief=brief, mode=mode)
+        run_info = hub.launch_real_project(name=name, brief=brief, mode=mode, model=model)
         return {"success": True, "project": run_info}
+
+    @app.get("/api/llm/router")
+    async def get_llm_router_endpoint():
+        """Get LLM router status and list of models."""
+        return hub.get_llm_router_info()
 
     @app.get("/api/projects")
     async def get_projects():

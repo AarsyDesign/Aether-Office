@@ -32,6 +32,11 @@ def main():
     run_parser.add_argument("--name", default=None, help="Project name (auto-generated if not set)")
     run_parser.add_argument("--output", default=None, help="Output directory (default: projects/<name>)")
     run_parser.add_argument("--mock", "--demo", dest="mock", action="store_true", help="Jalankan dalam mode simulasi offline tanpa server LLM")
+    run_parser.add_argument("--model", default=None, help="Spesifikasikan model pada LLM Router yang ingin digunakan")
+
+    # models / router command
+    models_parser = sub.add_parser("models", aliases=["router"], help="Periksa status LLM Router dan daftar model yang tersedia")
+    models_parser.add_argument("--config", default="config.yaml", help="Config file path")
 
     # status command
     status_parser = sub.add_parser("status", help="Show project status")
@@ -258,12 +263,58 @@ def main():
         cmd_objective(args)
     elif args.command in ("dashboard", "ui"):
         cmd_dashboard(args)
+    elif args.command in ("models", "router"):
+        cmd_models(args)
     elif args.command == "notify":
         cmd_notify(args)
     elif args.command == "track":
         cmd_track(args)
     else:
         parser.print_help()
+
+
+def cmd_models(args):
+    """Inspect the central LLM Router and list all routed models."""
+    config = load_config(args.config)
+    llm_cfg = config.get("llm", {})
+    endpoint = llm_cfg.get("endpoint", "")
+    api_key = llm_cfg.get("api_key", "")
+    default_model = llm_cfg.get("model", "")
+    models_map = llm_cfg.get("models", {})
+
+    print("\n=======================================================")
+    print("      AETHER OFFICE — CENTRAL LLM ROUTER STATUS")
+    print("=======================================================")
+    print(f"📍 Router Endpoint : {endpoint}")
+    print(f"🔑 API Key         : {api_key[:10]}...{api_key[-4:] if len(api_key) > 14 else ''}")
+    print(f"🎯 Default Model   : {default_model}")
+    print(f"⏱️  Timeout / Retry : {llm_cfg.get('timeout', 300)}s / {llm_cfg.get('max_retries', 3)}x")
+
+    if models_map:
+        print(f"\n🎭 Role Routing Map:")
+        for role, m in models_map.items():
+            print(f"   • {role:<16} ➔ {m}")
+
+    print(f"\n🔍 Menghubungi router di {endpoint}...")
+    try:
+        import httpx
+        r = httpx.get(
+            f"{endpoint.rstrip('/')}/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=5.0,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            models = [m.get("id") for m in data.get("data", []) if isinstance(m, dict) and "id" in m]
+            print(f"✅ Router Online! Ditemukan {len(models)} model:")
+            for i, m in enumerate(models, 1):
+                marker = " [DEFAULT]" if m == default_model else ""
+                print(f"   {i:>2}. {m}{marker}")
+        else:
+            print(f"⚠ Router merespons dengan HTTP {r.status_code}: {r.text[:200]}")
+    except Exception as e:
+        print(f"❌ Gagal menghubungi router: {e}")
+    print("=======================================================\n")
 
 
 def cmd_notify(args):
@@ -413,6 +464,9 @@ def cmd_run(args):
 
     # Load config and run
     config = load_config(args.config)
+    if getattr(args, "model", None):
+        config.setdefault("llm", {})["model"] = args.model
+        print(f"   🧠 Model Router: {args.model}")
     orchestrator = Orchestrator(config, project_id, output_dir)
 
     # Attach CLI real-time progress streamer to event bus

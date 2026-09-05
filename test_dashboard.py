@@ -180,3 +180,51 @@ def test_dashboard_fastapi_endpoints(test_hub):
     res_files = client.get(f"/api/projects/{p_id}/files")
     assert res_files.status_code == 200
     assert "brief.md" in res_files.json()["files"]
+
+    # 9. GET /api/llm/router
+    res_router = client.get("/api/llm/router")
+    assert res_router.status_code == 200
+    r_json = res_router.json()
+    assert "endpoint" in r_json
+    assert "default_model" in r_json
+    assert "available_models" in r_json
+    assert isinstance(r_json["available_models"], list)
+
+
+def test_llm_client_router_capabilities():
+    """Verify LLMClient router-aware multi-model methods."""
+    from llm import LLMClient
+
+    client = LLMClient(
+        endpoint="mock://router",
+        api_key="sk-test",
+        model="gratisan",
+        models={
+            "default": "gratisan",
+            "developer": "qwen2.5-coder",
+            "qa": "mistral-small",
+        },
+    )
+
+    # 1. Base model
+    assert client.model == "gratisan"
+
+    # 2. for_model spawns clone with specific model
+    claude_client = client.for_model("claude-3.7-sonnet")
+    assert claude_client.model == "claude-3.7-sonnet"
+    assert claude_client.endpoint == "mock://router"
+    assert claude_client.api_key == "sk-test"
+
+    # 3. for_role resolves to mapped model
+    dev_client = client.for_role("developer")
+    assert dev_client.model == "qwen2.5-coder"
+
+    qa_client = client.for_role("qa_engineer")
+    assert qa_client.model == "mistral-small"
+
+    unmapped = client.for_role("marketing")
+    assert unmapped.model == "gratisan"
+
+    # 4. list_available_models in mock mode
+    models = client.list_available_models()
+    assert len(models) >= 1
