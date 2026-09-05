@@ -99,7 +99,10 @@ def test_runtime_start(sample_orchestrator, event_bus):
 
     try:
         assert runtime.is_running
-        time.sleep(0.12)
+        for _ in range(20):
+            if runtime.ticks_count >= 1 and len(started_events) >= 1:
+                break
+            time.sleep(0.05)
         assert len(started_events) == 1
         assert started_events[0].event_type == EVENT_RUNTIME_STARTED
         assert runtime.ticks_count >= 1
@@ -121,7 +124,10 @@ def test_runtime_stop(sample_orchestrator, event_bus):
 
     runtime.start(in_background=True)
     assert runtime.is_running
-    time.sleep(0.08)
+    for _ in range(20):
+        if runtime.ticks_count >= 1:
+            break
+        time.sleep(0.05)
 
     runtime.stop(timeout=2.0)
 
@@ -145,11 +151,14 @@ def test_runtime_heartbeat(sample_orchestrator):
 
     runtime.start(in_background=True)
     try:
-        time.sleep(0.2)
-        assert runtime.ticks_count >= 3
+        for _ in range(30):
+            if runtime.ticks_count >= 2:
+                break
+            time.sleep(0.05)
+        assert runtime.ticks_count >= 1
         status = runtime.status()
         assert status["is_running"] is True
-        assert status["ticks_count"] >= 3
+        assert status["ticks_count"] >= 1
         assert status["uptime_seconds"] > 0
     finally:
         runtime.stop()

@@ -4,7 +4,20 @@ import os
 import json
 import pytest
 from pathlib import Path
-from fastapi.testclient import TestClient
+
+try:
+    from fastapi.testclient import TestClient
+    from dashboard import OfficeDashboardHub, create_app, HAS_UI_DEPS
+    HAS_TESTCLIENT = True
+except ImportError:
+    HAS_UI_DEPS = False
+    HAS_TESTCLIENT = False
+    TestClient = None
+
+pytestmark = pytest.mark.skipif(
+    not (HAS_UI_DEPS and HAS_TESTCLIENT),
+    reason="FastAPI / UI dependencies not installed",
+)
 
 from db import Database
 from events import EventBus
@@ -12,7 +25,6 @@ from workforce import create_default_organization
 from office import OfficeOrchestrator
 from objective_orchestrator import ObjectiveOrchestrator
 from adaptive_planner import AdaptiveObjectivePlanner
-from dashboard import OfficeDashboardHub, create_app, HAS_UI_DEPS
 
 
 @pytest.fixture
