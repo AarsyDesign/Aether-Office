@@ -1,0 +1,24 @@
+{
+  "name": "aether-office",
+  "version": "1.0.0",
+  "description": "Autonomous Multi-Agent AI Office & 2D Pixel Art Canvas Simulator",
+  "scripts": {
+    "setup": "python -m venv .venv && .\\.venv\\Scripts\\python.exe -m pip install -e \".[ui]\"",
+    "start": ".\\.venv\\Scripts\\python.exe cli.py dashboard",
+    "dev": ".\\.venv\\Scripts\\python.exe cli.py dashboard",
+    "test": ".\\.venv\\Scripts\\python.exe -m pytest",
+    "employees": ".\\.venv\\Scripts\\python.exe cli.py employees",
+    "build-demo": ".\\.venv\\Scripts\\python.exe cli.py run \"FastAPI Todo API\" --mock"
+  },
+  "keywords": [
+    "ai-agents",
+    "simulation",
+    "multi-agent",
+    "pixel-art",
+    "pixeloffice",
+    "fastapi",
+    "game-dashboard"
+  ],
+  "author": "AARSYDESIGN",
+  "license": "MIT"
+}
