@@ -427,7 +427,8 @@ class AetherGameDashboard {
       const data = await res.json();
       sfx.playFanfare();
       this.closeModals();
-      formQuest.reset();
+      const formEl = document.getElementById("form-new-quest");
+      if (formEl) formEl.reset();
       await this.fetchState();
     } catch (err) {
       alert(`Failed to create objective: ${err.message}`);

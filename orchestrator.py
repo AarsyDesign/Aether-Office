@@ -20,8 +20,14 @@ logger = logging.getLogger("aether.orchestrator")
 
 
 def load_config(path: str = "config.yaml") -> dict:
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
+    p = Path(path)
+    if p.exists():
+        with open(p, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    if path == "config.yaml" and Path("config.example.yaml").exists():
+        with open("config.example.yaml", "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    return {}
 
 
 class Orchestrator:

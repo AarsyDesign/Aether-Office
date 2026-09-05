@@ -206,8 +206,11 @@ It visualizes the autonomous organization as a living, breathing virtual company
 The UI is an **optional extension** to keep the core library ultra-lightweight:
 
 ```bash
-# Install optional UI dependencies (FastAPI & Uvicorn)
-pip install "aether-office[ui]"
+# Untuk repository lokal (clone):
+pip install -e ".[ui]"
+
+# Atau langsung install library web servernya:
+pip install fastapi uvicorn
 
 # Launch the game dashboard (opens browser at http://127.0.0.1:8000)
 aether dashboard

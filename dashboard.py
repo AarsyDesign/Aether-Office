@@ -196,43 +196,76 @@ class OfficeDashboardHub:
         all_objs = self.obj_orch.list_objectives()
         objectives_data = []
         for obj in all_objs:
-            plan = self.obj_orch.get_plan(obj.id)
+            # Try to get adaptive plan milestones via planner cache
             milestones = []
-            if plan and hasattr(plan, "milestones"):
-                for m in plan.milestones:
-                    milestones.append({
-                        "id": m.id,
-                        "title": m.title,
-                        "required_roles": m.required_roles,
-                        "dependencies": m.dependencies,
-                        "status": "COMPLETED" if m.id in obj.completed_milestones else "PENDING",
-                    })
+            try:
+                plan = self.planner._plans.get(obj.id)  # type: ignore[attr-defined]
+                if plan and hasattr(plan, "milestones"):
+                    for m in plan.milestones:
+                        completed_ids = getattr(obj, "completed_milestones", [])
+                        milestones.append({
+                            "id": m.id,
+                            "title": m.title,
+                            "required_roles": getattr(m, "required_roles", []),
+                            "dependencies": getattr(m, "dependencies", []),
+                            "status": "COMPLETED" if m.id in completed_ids else "PENDING",
+                        })
+            except Exception:
+                pass
 
-            # Check quality report
-            report = self.obj_orch.evaluate_plan_quality(obj.id)
+            # Check quality report — safe call
             quality_info = None
-            if report:
-                quality_info = {
-                    "score": report.score,
-                    "grade": report.grade,
-                    "is_viable": report.is_viable,
-                }
+            try:
+                report = self.obj_orch.evaluate_plan_quality(obj.id)
+                if report:
+                    quality_info = {
+                        "score": report.score,
+                        "grade": report.grade,
+                        "is_viable": report.is_viable,
+                    }
+            except Exception:
+                pass
+
+            # Safe attribute access for Phase 9 fields that may not be on older records
+            domain_val = "GENERAL"
+            try:
+                if hasattr(obj, "domain") and obj.domain:
+                    domain_val = obj.domain.value if hasattr(obj.domain, "value") else str(obj.domain)
+            except Exception:
+                pass
+
+            strategy_val = "STANDARD"
+            try:
+                if hasattr(obj, "strategy_name") and obj.strategy_name:
+                    strategy_val = obj.strategy_name
+            except Exception:
+                pass
+
+            spent_val = 0.0
+            try:
+                if hasattr(obj, "spent"):
+                    spent_val = float(obj.spent or 0.0)
+            except Exception:
+                pass
+
+            budget_val = float(getattr(obj, "budget", 0.0) or 0.0)
+            completed_ms = len(getattr(obj, "completed_milestones", []))
 
             objectives_data.append({
                 "id": obj.id,
                 "title": obj.title,
                 "description": obj.description,
-                "status": obj.status.value,
-                "priority": obj.priority.value,
-                "budget": obj.budget,
-                "spent": obj.spent,
-                "domain": obj.domain.value if hasattr(obj, "domain") and obj.domain else "GENERAL",
-                "strategy": obj.strategy_name if hasattr(obj, "strategy_name") and obj.strategy_name else "STANDARD",
-                "completed_milestones": len(obj.completed_milestones),
+                "status": obj.status.value if hasattr(obj.status, "value") else str(obj.status),
+                "priority": obj.priority.value if hasattr(obj.priority, "value") else str(obj.priority),
+                "budget": budget_val,
+                "spent": spent_val,
+                "domain": domain_val,
+                "strategy": strategy_val,
+                "completed_milestones": completed_ms,
                 "total_milestones": len(milestones),
                 "milestones": milestones,
                 "quality": quality_info,
-                "created_at": obj.created_at,
+                "created_at": getattr(obj, "created_at", ""),
             })
 
         # 4. Recent Events for live ticker
@@ -271,18 +304,27 @@ class OfficeDashboardHub:
             logger.warning(f"Error fetching work tasks: {e}")
 
         # 6. Overall HUD stats
-        total_budget = sum(o.budget for o in all_objs if o.budget > 0) or 50000.0
-        total_spent = state_dict.get("total_cost", 0.0) + sum(o.spent for o in all_objs)
+        def _safe_budget(o): 
+            return float(getattr(o, "budget", 0.0) or 0.0)
+        def _safe_spent(o):
+            return float(getattr(o, "spent", 0.0) or 0.0)
+        def _obj_status(o):
+            s = o.status
+            return s.value if hasattr(s, "value") else str(s)
+
+        total_budget = sum(_safe_budget(o) for o in all_objs if _safe_budget(o) > 0) or 50000.0
+        total_spent = state_dict.get("total_cost", 0.0) + sum(_safe_spent(o) for o in all_objs)
         remaining_funds = max(0.0, total_budget - total_spent)
 
+        active_statuses = {"EXECUTING", "IN_PROGRESS", "PLANNED", "READY", "PLANNING", "EVALUATING"}
         hud = {
             "company_name": "AETHER OFFICE INC.",
             "ticks": self.tick_count,
             "treasury_funds": round(remaining_funds, 2),
             "total_budget": round(total_budget, 2),
             "total_spent": round(total_spent, 2),
-            "active_quests": sum(1 for o in all_objs if o.status.value in ("IN_PROGRESS", "PLANNED", "EVALUATING")),
-            "completed_quests": sum(1 for o in all_objs if o.status.value == "COMPLETED"),
+            "active_quests": sum(1 for o in all_objs if _obj_status(o) in active_statuses),
+            "completed_quests": sum(1 for o in all_objs if _obj_status(o) == "COMPLETED"),
             "total_workforce": state_dict.get("total_employees", 0),
             "busy_workforce": state_dict.get("busy_employees", 0),
             "available_workforce": state_dict.get("available_employees", 0),
@@ -507,8 +549,10 @@ def start_dashboard(
         print("\n" + "=" * 65)
         print("❌ DASHBOARD DEPENDENCY MISSING")
         print("   FastAPI and Uvicorn are required to launch the game dashboard.")
-        print("   Please install the optional UI package:")
-        print("       pip install \"aether-office[ui]\"")
+        print("   Please run one of the following commands in your terminal:")
+        print("       pip install -e \".[ui]\"")
+        print("   or directly:")
+        print("       pip install fastapi uvicorn")
         print("=" * 65 + "\n")
         sys.exit(1)
 

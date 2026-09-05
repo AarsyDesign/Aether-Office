@@ -252,8 +252,10 @@ def cmd_dashboard(args):
         print("\n" + "=" * 65)
         print("❌ DASHBOARD DEPENDENCY MISSING")
         print("   FastAPI dan Uvicorn dibutuhkan untuk menjalankan game dashboard.")
-        print("   Silakan instal paket ekstensi UI:")
-        print("       pip install \"aether-office[ui]\"")
+        print("   Silakan jalankan perintah instalasi berikut di terminal:")
+        print("       pip install -e \".[ui]\"")
+        print("   atau langsung:")
+        print("       pip install fastapi uvicorn")
         print("=" * 65 + "\n")
         sys.exit(1)
 
