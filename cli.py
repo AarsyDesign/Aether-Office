@@ -177,6 +177,23 @@ def main():
     dash_parser.add_argument("--no-browser", "--no-open", dest="no_browser", action="store_true", help="Jangan buka browser secara otomatis")
     dash_parser.add_argument("--config", default="config.yaml", help="Path file konfigurasi")
 
+    # notify command (Telemetry Bridge)
+    notify_parser = sub.add_parser("notify", help="Kirim pembaruan aktivitas AI riil ke dashboard Aether Office")
+    notify_parser.add_argument("--role", default="developer", help="Peran agen (developer, qa, devops, pm, conceptor)")
+    notify_parser.add_argument("--task", required=True, help="Nama tugas pekerjaan riil")
+    notify_parser.add_argument("--status", default="WORKING", choices=["WORKING", "COMPLETED", "FAILED", "IDLE"], help="Status pekerjaan")
+    notify_parser.add_argument("--source", default="hermes", help="Sumber aktivitas (hermes, antigravity, vscode, cron, dll.)")
+    notify_parser.add_argument("--details", default="", help="Detail file/keterangan pekerjaan riil")
+    notify_parser.add_argument("--url", default="http://127.0.0.1:8000", help="URL server Aether Office")
+
+    # track command (CLI Execution Wrapper)
+    track_parser = sub.add_parser("track", help="Jalankan perintah riil dan pantulkan progresnya secara langsung ke visual dashboard")
+    track_parser.add_argument("--role", default="developer", help="Peran agen (developer, qa, devops, pm, conceptor)")
+    track_parser.add_argument("--task", required=True, help="Nama tugas pekerjaan riil")
+    track_parser.add_argument("--source", default="hermes", help="Sumber aktivitas")
+    track_parser.add_argument("--url", default="http://127.0.0.1:8000", help="URL server Aether Office")
+    track_parser.add_argument("cmd", nargs=argparse.REMAINDER, help="Perintah shell riil yang dieksekusi")
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -241,8 +258,63 @@ def main():
         cmd_objective(args)
     elif args.command in ("dashboard", "ui"):
         cmd_dashboard(args)
+    elif args.command == "notify":
+        cmd_notify(args)
+    elif args.command == "track":
+        cmd_track(args)
     else:
         parser.print_help()
+
+
+def cmd_notify(args):
+    """Send real AI telemetry activity to Aether Office."""
+    from aether_client import AetherMonitor
+    monitor = AetherMonitor(args.url, default_source=args.source)
+    res = monitor.notify(
+        role=args.role,
+        task=args.task,
+        status=args.status,
+        details=args.details,
+    )
+    if res and res.get("success"):
+        print(f"📡 Telemetri terkirim: [{args.source.upper()}] {args.role} -> {args.task} ({args.status})")
+    else:
+        print(f"⚠️ Gagal mengirim telemetri ke {args.url}. Pastikan dashboard Aether Office aktif.")
+
+
+def cmd_track(args):
+    """Execute a real command and track its live state in Aether Office."""
+    import subprocess
+    from aether_client import AetherMonitor
+    
+    if not args.cmd:
+        print("❌ Error: Tentukan perintah yang ingin dijalankan. Contoh: aether track --task 'Run tests' -- pytest")
+        sys.exit(1)
+
+    cmd = args.cmd[1:] if args.cmd[0] == "--" else args.cmd
+    cmd_str = " ".join(cmd)
+    
+    monitor = AetherMonitor(args.url, default_source=args.source)
+    print(f"🚀 Memulai pelacakan AI: [{args.source.upper()}] {args.role} -> '{args.task}'")
+    print(f"   Perintah: {cmd_str}\n")
+    
+    monitor.start_activity(role=args.role, task=args.task, details=f"Running: {cmd_str}")
+    t0 = time.perf_counter()
+    
+    try:
+        ret = subprocess.run(cmd, shell=True)
+        dur = round(time.perf_counter() - t0, 2)
+        if ret.returncode == 0:
+            monitor.complete_activity(role=args.role, task=args.task, details=f"Selesai dalam {dur}s (Exit code: 0)")
+            print(f"\n✅ Selesai dalam {dur}s! Telemetri sukses diperbarui di Aether Office.")
+        else:
+            monitor.fail_activity(role=args.role, task=args.task, error=f"Gagal dengan exit code {ret.returncode} ({dur}s)")
+            print(f"\n❌ Gagal dengan exit code {ret.returncode}!")
+        sys.exit(ret.returncode)
+    except Exception as e:
+        monitor.fail_activity(role=args.role, task=args.task, error=str(e))
+        print(f"\n❌ Eksepsi saat menjalankan perintah: {e}")
+        sys.exit(1)
 
 
 def cmd_dashboard(args):

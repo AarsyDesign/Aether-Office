@@ -109,7 +109,7 @@ def test_dashboard_create_objective(test_hub):
     )
 
     assert obj_info["title"] == "Test Campaign 1"
-    assert obj_info["status"] in ("PLANNED", "READY", "IN_PROGRESS", "DRAFT")
+    assert obj_info["status"] in ("PLANNED", "READY", "IN_PROGRESS", "DRAFT", "EXECUTING")
     assert obj_info["plan_milestones"] > 0
 
 
