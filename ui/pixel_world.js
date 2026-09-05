@@ -42,7 +42,32 @@ class PixelOfficeWorld {
     this.mousePos = { x: 0, y: 0 };
 
     this._initEvents();
+    this.fitToContainer();
+
+    if (window.ResizeObserver && this.canvas.parentElement) {
+      this.resizeObserver = new ResizeObserver(() => this.fitToContainer());
+      this.resizeObserver.observe(this.canvas.parentElement);
+    }
+    window.addEventListener("resize", () => this.fitToContainer());
+
     this.startLoop();
+  }
+
+  fitToContainer() {
+    if (!this.canvas || !this.canvas.parentElement) return;
+    const parent = this.canvas.parentElement;
+    const pw = Math.max(300, parent.clientWidth - 12);
+    const ph = Math.max(160, parent.clientHeight - 12);
+
+    const targetAspect = 16 / 9;
+    let w = pw;
+    let h = w / targetAspect;
+    if (h > ph) {
+      h = ph;
+      w = h * targetAspect;
+    }
+    this.canvas.style.width = `${Math.floor(w)}px`;
+    this.canvas.style.height = `${Math.floor(h)}px`;
   }
 
   setLightMode(isLight) {

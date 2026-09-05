@@ -284,6 +284,9 @@ class AetherGameDashboard {
         this.btnToggleView.textContent = "🎮 2D PIXEL VIEW";
         this.canvasWrapper.classList.remove("hidden");
         this.elFloorGrid.classList.add("hidden");
+        if (this.pixelWorld) {
+          setTimeout(() => this.pixelWorld.fitToContainer(), 50);
+        }
       } else {
         this.btnToggleView.textContent = "📋 ROOM MATRIX";
         this.canvasWrapper.classList.add("hidden");
@@ -291,6 +294,17 @@ class AetherGameDashboard {
         this.renderFloorGrid();
       }
     });
+
+    // Close / Dismiss Hint Pill
+    const btnCloseHint = document.getElementById("btn-close-hint");
+    const hintPill = document.getElementById("canvas-hint-pill");
+    if (btnCloseHint && hintPill) {
+      btnCloseHint.addEventListener("click", (e) => {
+        e.stopPropagation();
+        sfx.playClick();
+        hintPill.style.display = "none";
+      });
+    }
 
     // Step Tick
     this.btnTick.addEventListener("click", () => {
