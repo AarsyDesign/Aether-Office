@@ -1,6 +1,7 @@
 """LLM wrapper — OpenAI-compatible API with reliability."""
 
 from __future__ import annotations
+import os
 import json
 import time
 import logging
@@ -8,6 +9,96 @@ import requests
 from typing import Any
 
 logger = logging.getLogger("aether.llm")
+
+
+def _generate_mock_response(messages: list[dict], json_mode: bool = False) -> tuple[str, dict | None]:
+    """Generate realistic offline simulation responses for Aether Office agents."""
+    last_msg = str(messages[-1].get("content", "")) if messages else ""
+    system_msg = str(messages[0].get("content", "")) if len(messages) > 1 else ""
+    sys_lower = system_msg.lower()
+    user_lower = last_msg.lower()
+
+    usage = {"prompt_tokens": 150, "completion_tokens": 120, "total_tokens": 270}
+
+    # 1. Developer Planner (Software Architect / Implementation Plan)
+    if "developer planner" in sys_lower or "software architect" in sys_lower or "files" in sys_lower and "project_summary" in sys_lower:
+        res = {
+            "project_summary": "Modular application with robust design",
+            "tech_stack": "Python 3.11, SQLite",
+            "files": [
+                {
+                    "path": "core.py",
+                    "purpose": "Core business logic and handlers",
+                    "dependencies": [],
+                    "exports": ["run_app"],
+                    "depends_on": [],
+                    "priority": 1,
+                },
+                {
+                    "path": "test_core.py",
+                    "purpose": "Automated test suite",
+                    "dependencies": [],
+                    "exports": ["TestApp"],
+                    "depends_on": ["core.py"],
+                    "priority": 2,
+                }
+            ],
+            "dependency_analysis": "core.py -> test_core.py"
+        }
+        return (json.dumps(res), usage) if json_mode else (json.dumps(res), usage)
+
+    # 2. QA Agent (Test Runner / Verdict)
+    if "qa engineer" in sys_lower or "verdict" in sys_lower:
+        res = {
+            "verdict": "PASS",
+            "summary": "Automated verification completed with 0 errors. All test suites passed.",
+            "test_cases": [{"name": "test_core_module", "status": "PASS"}],
+        }
+        return (json.dumps(res), usage) if json_mode else ("VERDICT: PASS\nAll tests passed successfully.", usage)
+
+    # 3. Project Manager (Brief breakdown into tasks)
+    if "project manager" in sys_lower:
+        res = {
+            "project_name": "Aether Automated Project",
+            "project_description": "Autonomous end-to-end outcome verified by Aether Office.",
+            "tasks": [
+                {"title": "Setup project core architecture", "description": "Initialize modules", "priority": 5, "dependencies": []},
+                {"title": "Implement core services and logic", "description": "Business logic implementation", "priority": 4, "dependencies": [0]},
+                {"title": "Add test suites and verification", "description": "Automated tests", "priority": 3, "dependencies": [1]},
+            ]
+        }
+        return (json.dumps(res), usage) if json_mode else (json.dumps(res), usage)
+
+    # 4. Product Conceptor (Requirements & Specifications)
+    if "conceptor" in sys_lower or "requirements" in sys_lower and "acceptance criteria" in sys_lower:
+        req_doc = (
+            "# System Requirements Specification\n\n"
+            "## Acceptance Criteria\n"
+            "1. Application core runs successfully with verified exit code 0.\n"
+            "2. All business logic functions return valid structured payload.\n"
+            "3. Automated test cases pass without regressions.\n\n"
+            "## Technical Design\n"
+            "Modular architecture in Python with unit testing."
+        )
+        return (json.dumps({"requirements": req_doc}), usage) if json_mode else (req_doc, usage)
+
+    # 5. Developer Code Generator (Generating file content)
+    if "developer" in sys_lower or "code" in user_lower or "unit" in user_lower:
+        if "test" in user_lower:
+            code_body = '"""Automated test suite."""\nimport unittest\n\nclass TestApp(unittest.TestCase):\n    def test_core(self):\n        self.assertTrue(True)\n\nif __name__ == "__main__":\n    unittest.main()\n\n'
+            target_path = "test_core.py"
+        else:
+            code_body = '"""Core module implementation."""\n\ndef run_app():\n    return {"status": "ok", "message": "Outcome verified"}\n\nif __name__ == "__main__":\n    print(run_app())\n\n'
+            target_path = "core.py"
+
+        if json_mode:
+            return json.dumps({"path": target_path, "content": code_body}), usage
+        return f"```python\n{code_body}```\n", usage
+
+    # Default fallback
+    if json_mode:
+        return json.dumps({"status": "COMPLETED", "message": "Simulation response"}), usage
+    return "Aether Office agent successfully processed instruction in offline mode.", usage
 
 
 class LLMError(Exception):
@@ -82,6 +173,10 @@ def call_llm(
     timeout: int = 300,
 ) -> tuple[str, dict | None]:
     """Call LLM. Returns (content, usage). Raises LLMError on failure."""
+    # Check offline mock mode
+    if endpoint.startswith("mock://") or os.environ.get("AETHER_MOCK_LLM") == "1":
+        return _generate_mock_response(messages, json_mode=json_mode)
+
     url = f"{endpoint.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",

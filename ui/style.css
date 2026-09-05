@@ -812,3 +812,474 @@ body {
   border-color: #38bdf8;
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
 }
+
+/* ==========================================================================
+   PIXELOFFICE BRIDGE & RETRO VISUAL EXTENSIONS
+   ========================================================================== */
+
+/* PixelOffice Protocol Badge */
+.bridge-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--font-retro);
+  font-size: 0.5rem;
+  color: #34d399;
+}
+
+.bridge-dot {
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #10b981;
+  animation: pulse-green 1.5s infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* Interactive Room Whiteboard (Pixel Planning Station) */
+.room-whiteboard {
+  background: #1e293b;
+  border: 2px solid #64748b;
+  border-radius: 4px;
+  margin: 6px 10px 0 10px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: #cbd5e1;
+  box-shadow: inset 0 0 6px rgba(0,0,0,0.5);
+  transition: all 0.3s ease;
+}
+
+.room-whiteboard.planning-active {
+  background: #1e1b4b;
+  border-color: #a855f7;
+  color: #e9d5ff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4), inset 0 0 6px rgba(168, 85, 247, 0.2);
+}
+
+.whiteboard-icon {
+  font-size: 0.85rem;
+}
+
+/* Roaming Office Pets (Pixel Cat Mimi & Dog Boni) */
+.office-pet {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #0f172a;
+  border: 1px dashed #f59e0b;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.6rem;
+  font-family: var(--font-retro);
+  color: #fcd34d;
+  margin-top: 6px;
+  animation: pet-bob 3s ease-in-out infinite;
+}
+
+@keyframes pet-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Dynamic State Monitors */
+.screen-light.coding {
+  background: #06b6d4;
+  box-shadow: 0 0 8px #06b6d4;
+  animation: coding-flicker 0.4s infinite alternate;
+}
+
+.screen-light.planning {
+  background: #a855f7;
+  box-shadow: 0 0 8px #a855f7;
+  animation: flicker 1.2s infinite alternate;
+}
+
+.screen-light.testing {
+  background: #f97316;
+  box-shadow: 0 0 8px #f97316;
+  animation: coding-flicker 0.6s infinite alternate;
+}
+
+@keyframes coding-flicker {
+  0% { opacity: 0.7; transform: scaleX(0.95); }
+  100% { opacity: 1; transform: scaleX(1.05); }
+}
+
+/* =========================================================================
+   2D PIXEL OFFICE CANVAS WORLD
+   ========================================================================= */
+.canvas-wrapper {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #090d16;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 2px solid #1e293b;
+}
+
+.canvas-wrapper.hidden {
+  display: none !important;
+}
+
+#pixel-canvas {
+  width: 100%;
+  height: auto;
+  max-height: calc(100vh - 170px);
+  aspect-ratio: 16 / 9;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.7);
+  display: block;
+}
+
+.canvas-overlay-hint {
+  position: absolute;
+  bottom: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-family: var(--font-retro);
+  font-size: 0.55rem;
+  color: #94a3b8;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.floor-grid.hidden {
+  display: none !important;
+}
+
+/* Action Pulse Button (Build Real App) */
+.retro-btn.action-pulse {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border-color: #34d399;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+  animation: pulse-btn 2s infinite ease-in-out;
+  font-weight: 700;
+}
+
+@keyframes pulse-btn {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(16, 185, 129, 0.8);
+    transform: scale(1.03);
+  }
+}
+
+/* Modal Callout */
+.modal-callout {
+  background: #0f172a;
+  border-left: 3px solid #10b981;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.modal-callout code {
+  background: #1e293b;
+  padding: 2px 5px;
+  border-radius: 3px;
+  color: #38bdf8;
+  font-family: var(--font-mono);
+}
+
+/* Code Inspector Modal (Extra Wide) */
+.retro-modal.x-wide {
+  max-width: 950px;
+  width: 95vw;
+}
+
+.project-badge {
+  background: #0369a1;
+  color: #e0f2fe;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.inspector-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 14px;
+  height: 480px;
+  overflow: hidden;
+}
+
+.inspector-sidebar {
+  background: #090d16;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.inspector-sidebar .sidebar-header {
+  font-family: var(--font-retro);
+  font-size: 0.65rem;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.file-tree {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+
+.file-item:hover {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.file-item.active {
+  background: #1e3a8a;
+  border-color: #38bdf8;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.inspector-main {
+  display: flex;
+  flex-direction: column;
+  background: #090d16;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.code-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #0f172a;
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #38bdf8;
+}
+
+.code-editor {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  background: #020617;
+  color: #e2e8f0;
+  font-family: 'Space Mono', Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  overflow: auto;
+  white-space: pre;
+}
+
+/* Test Console Drawer */
+.test-console-drawer {
+  background: #020617;
+  border-top: 2px solid #334155;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.test-console-drawer.hidden {
+  display: none;
+}
+
+.test-console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  background: #0f172a;
+  font-family: var(--font-retro);
+  font-size: 0.6rem;
+  color: #94a3b8;
+}
+
+.test-console-log {
+  flex: 1;
+  margin: 0;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #4ade80;
+  background: #020617;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* Real Project Item in Sidebar */
+.real-project-item {
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.real-project-item:hover {
+  border-color: #38bdf8;
+  background: #131c31;
+}
+
+.real-project-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.real-project-name {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #38bdf8;
+}
+
+.real-project-status {
+  font-family: var(--font-retro);
+  font-size: 0.55rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.real-project-status.completed {
+  background: #064e3b;
+  color: #34d399;
+}
+
+.real-project-status.running {
+  background: #431407;
+  color: #fb923c;
+  animation: pulse 1s infinite alternate;
+}
+
+.real-project-status.failed {
+  background: #7f1d1d;
+  color: #f87171;
+}
+
+.real-project-meta {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.real-project-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* DAG Visualizer */
+.dag-pipeline-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 20px 10px;
+  background: #090d16;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.dag-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  background: #0f172a;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  min-width: 130px;
+  text-align: center;
+}
+
+.dag-node.completed {
+  border-color: #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.dag-node.active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+  animation: pulse 1.5s infinite alternate;
+}
+
+.dag-node.pending {
+  border-color: #475569;
+  opacity: 0.6;
+}
+
+.dag-node .node-icon {
+  font-size: 1.4rem;
+  margin-bottom: 4px;
+}
+
+.dag-node .node-title {
+  font-family: var(--font-retro);
+  font-size: 0.65rem;
+  color: #f8fafc;
+  margin-bottom: 2px;
+}
+
+.dag-node .node-sub {
+  font-size: 0.65rem;
+  color: #94a3b8;
+}
+
+.dag-arrow {
+  font-size: 1.4rem;
+  color: #64748b;
+}
+
+

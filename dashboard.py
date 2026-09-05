@@ -9,6 +9,17 @@ from __future__ import annotations
 
 import os
 import sys
+
+# Ensure UTF-8 stdout/stderr on Windows terminals to prevent charmap UnicodeEncodeError
+if sys.platform == "win32":
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 import json
 import time
 import asyncio
@@ -30,11 +41,12 @@ except ImportError:
 
 from orchestrator import load_config
 from db import Database
-from workforce import create_default_organization, Organization
+from workforce import create_default_organization, Organization, seed_full_workforce
 from office import OfficeOrchestrator
 from objective_orchestrator import ObjectiveOrchestrator
 from adaptive_planner import AdaptiveObjectivePlanner
 from events import EventBus, Event, EVENT_OFFICE_STATE_CHANGED
+from pixel_bridge import PixelOfficeBridge
 
 logger = logging.getLogger("aether.dashboard")
 
@@ -54,6 +66,7 @@ class OfficeDashboardHub:
         self.db = Database(db_path, event_bus=self.event_bus)
         
         self.organization, _ = create_default_organization()
+        seed_full_workforce(self.organization)
         self.db.sync_organization_to_db(self.organization)
         
         self.office = OfficeOrchestrator(
@@ -75,6 +88,10 @@ class OfficeDashboardHub:
             use_adaptive=True,
         )
         
+        # PixelOffice bridge (fail-open UDP 9997 & HTTP 3003)
+        self.pixel_bridge = PixelOfficeBridge(event_bus=self.event_bus)
+        self.pixel_bridge.start()
+
         # SSE active client queues
         self._sse_queues: List[asyncio.Queue] = []
         self.event_bus.subscribe(self._on_event)
@@ -332,6 +349,8 @@ class OfficeDashboardHub:
             "running_tasks": state_dict.get("running_tasks", 0),
             "completed_tasks": state_dict.get("completed_tasks", 0),
             "system_health": 99.4 if state_dict.get("failed_tasks", 0) == 0 else 88.0,
+            "pixel_bridge_active": getattr(getattr(self, "pixel_bridge", None), "running", False),
+            "pixel_bridge_target": "127.0.0.1:9997 (UDP)",
             "timestamp": time.time(),
         }
 
@@ -404,6 +423,200 @@ class OfficeDashboardHub:
             "verdict": outcome.verdict.value if outcome and outcome.verdict else "UNKNOWN",
             "message": outcome.message if outcome else "No outcome",
         }
+
+    def launch_real_project(
+        self,
+        name: str,
+        brief: str,
+        mode: str = "mock",
+    ) -> Dict[str, Any]:
+        """Launch a real multi-agent project in background thread."""
+        import copy
+        import threading
+        import re
+        from orchestrator import Orchestrator
+
+        clean_name = re.sub(r"[^a-zA-Z0-9_\-]", "-", name.lower().strip()) or "project"
+        project_id = f"{clean_name}-{int(time.time())}"
+        output_dir = Path("projects") / project_id
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Write brief to brief.md
+        brief_file = output_dir / "brief.md"
+        brief_file.write_text(brief, encoding="utf-8")
+
+        # Track active runs
+        run_info = {
+            "project_id": project_id,
+            "name": clean_name,
+            "brief": brief,
+            "mode": mode,
+            "status": "RUNNING",
+            "start_time": time.time(),
+            "output_dir": str(output_dir),
+            "result": None,
+        }
+        if not hasattr(self, "_active_projects"):
+            self._active_projects = {}
+        self._active_projects[project_id] = run_info
+
+        def _worker():
+            try:
+                cfg = copy.deepcopy(self.config)
+                if mode == "mock":
+                    cfg.setdefault("llm", {})["endpoint"] = "mock://offline"
+                    cfg.setdefault("llm", {})["mock"] = True
+                orch = Orchestrator(cfg, project_id, str(output_dir))
+                # Forward all pipeline events to dashboard hub event bus & SSE
+                orch.event_bus.subscribe(lambda evt: self.event_bus.publish(evt))
+
+                # Publish initial pipeline event
+                self.event_bus.publish(
+                    Event(
+                        event_type="PROJECT_RUN_STARTED",
+                        project_id=project_id,
+                        payload={"name": clean_name, "mode": mode, "output_dir": str(output_dir)},
+                    )
+                )
+
+                res = orch.run(brief)
+                run_info["status"] = "COMPLETED" if res.get("success") else "FAILED"
+                run_info["result"] = res
+                run_info["end_time"] = time.time()
+
+                self.event_bus.publish(
+                    Event(
+                        event_type="PROJECT_RUN_COMPLETED" if res.get("success") else "PROJECT_RUN_FAILED",
+                        project_id=project_id,
+                        payload={"result": res, "status": run_info["status"]},
+                    )
+                )
+            except Exception as e:
+                logger.exception(f"Real project run failed for {project_id}")
+                run_info["status"] = "FAILED"
+                run_info["error"] = str(e)
+                self.event_bus.publish(
+                    Event(
+                        event_type="PROJECT_RUN_FAILED",
+                        project_id=project_id,
+                        payload={"error": str(e)},
+                    )
+                )
+
+        t = threading.Thread(target=_worker, daemon=True)
+        t.start()
+
+        return run_info
+
+    def list_real_projects(self) -> List[Dict[str, Any]]:
+        """List all generated real projects from the projects/ directory."""
+        projects_dir = Path("projects")
+        if not projects_dir.exists():
+            return []
+
+        results = []
+        for p in projects_dir.iterdir():
+            if not p.is_dir():
+                continue
+            pid = p.name
+            files = [f.name for f in p.iterdir() if f.is_file()]
+            mtime = p.stat().st_mtime
+
+            # Read brief if present
+            brief_text = ""
+            brief_file = p / "brief.md"
+            if brief_file.exists():
+                try:
+                    brief_text = brief_file.read_text(encoding="utf-8", errors="replace")[:200]
+                except Exception:
+                    pass
+
+            # Read QA verdict if qa_report.json exists
+            qa_verdict = "UNKNOWN"
+            qa_file = p / "qa_report.json"
+            if qa_file.exists():
+                try:
+                    with open(qa_file, "r", encoding="utf-8") as f:
+                        qa_data = json.load(f)
+                        qa_verdict = qa_data.get("verdict", "UNKNOWN")
+                except Exception:
+                    pass
+
+            # Determine status
+            status = "COMPLETED" if qa_verdict == "PASS" else ("READY" if any(f.endswith(".py") for f in files) else "PENDING")
+            if hasattr(self, "_active_projects") and pid in self._active_projects:
+                status = self._active_projects[pid].get("status", status)
+
+            results.append({
+                "id": pid,
+                "name": pid.rsplit("-", 1)[0] if "-" in pid else pid,
+                "path": str(p),
+                "files_count": len(files),
+                "files": files,
+                "brief_preview": brief_text,
+                "qa_verdict": qa_verdict,
+                "status": status,
+                "updated_at": mtime,
+            })
+
+        results.sort(key=lambda x: x["updated_at"], reverse=True)
+        return results
+
+    def get_project_files(self, project_id: str) -> Dict[str, Any]:
+        """Get file contents for a generated project."""
+        p = Path("projects") / project_id
+        if not p.exists() or not p.is_dir():
+            raise FileNotFoundError(f"Project directory {project_id} not found")
+
+        file_list = []
+        file_contents = {}
+        for f in p.iterdir():
+            if f.is_file():
+                file_list.append(f.name)
+                try:
+                    content = f.read_text(encoding="utf-8", errors="replace")
+                    file_contents[f.name] = content
+                except Exception as e:
+                    file_contents[f.name] = f"<Error reading file: {e}>"
+
+        return {
+            "project_id": project_id,
+            "files": file_list,
+            "contents": file_contents,
+        }
+
+    def run_project_tests(self, project_id: str) -> Dict[str, Any]:
+        """Execute pytest directly against generated project files."""
+        import subprocess
+        p = Path("projects") / project_id
+        if not p.exists():
+            return {"success": False, "error": "Project not found"}
+
+        venv_py = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
+        py_exe = str(venv_py) if venv_py.exists() else sys.executable
+
+        start_time = time.time()
+        try:
+            cmd = [py_exe, "-m", "pytest", str(p), "-v", "--tb=short"]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=str(Path(__file__).parent),
+                timeout=30,
+            )
+            duration = round(time.time() - start_time, 2)
+            return {
+                "success": proc.returncode == 0,
+                "exit_code": proc.returncode,
+                "stdout": proc.stdout,
+                "stderr": proc.stderr,
+                "duration": duration,
+            }
+        except subprocess.TimeoutExpired:
+            return {"success": False, "error": "Pytest timed out after 30 seconds"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
 
 # Initialize FastAPI app instance
@@ -525,6 +738,38 @@ def create_app(hub: Optional[OfficeDashboardHub] = None) -> FastAPI:
         res = hub.run_objective(objective_id, ticks=ticks)
         return {"success": True, "result": res}
 
+    # Real Project Pipeline Endpoints
+    @app.post("/api/projects/launch")
+    async def post_launch_project(request: Request):
+        """Launch a real multi-agent development project."""
+        data = await request.json()
+        name = data.get("name", "project")
+        brief = data.get("brief", "")
+        mode = data.get("mode", "mock")
+        if not brief.strip():
+            raise HTTPException(status_code=400, detail="Project brief is required")
+        run_info = hub.launch_real_project(name=name, brief=brief, mode=mode)
+        return {"success": True, "project": run_info}
+
+    @app.get("/api/projects")
+    async def get_projects():
+        """List all generated real projects from disk."""
+        return {"projects": hub.list_real_projects()}
+
+    @app.get("/api/projects/{project_id}/files")
+    async def get_project_files_endpoint(project_id: str):
+        """Get file contents for a generated real project."""
+        try:
+            return hub.get_project_files(project_id)
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    @app.post("/api/projects/{project_id}/run-tests")
+    async def post_run_tests(project_id: str):
+        """Execute pytest against generated project files."""
+        result = hub.run_project_tests(project_id)
+        return result
+
     # Serve static assets
     app.mount("/static", StaticFiles(directory=str(UI_DIR)), name="static")
 
@@ -538,6 +783,16 @@ def create_app(hub: Optional[OfficeDashboardHub] = None) -> FastAPI:
     return app
 
 
+def _safe_print(text: str) -> None:
+    try:
+        print(text)
+    except Exception:
+        try:
+            print(text.encode("ascii", "replace").decode("ascii"))
+        except Exception:
+            pass
+
+
 def start_dashboard(
     host: str = "127.0.0.1",
     port: int = 8000,
@@ -546,25 +801,33 @@ def start_dashboard(
 ) -> None:
     """Launch the dashboard web server."""
     if not HAS_UI_DEPS:
-        print("\n" + "=" * 65)
-        print("❌ DASHBOARD DEPENDENCY MISSING")
-        print("   FastAPI and Uvicorn are required to launch the game dashboard.")
-        print("   Please run one of the following commands in your terminal:")
-        print("       pip install -e \".[ui]\"")
-        print("   or directly:")
-        print("       pip install fastapi uvicorn")
-        print("=" * 65 + "\n")
+        from pathlib import Path
+        venv_python = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
+        if venv_python.exists() and sys.executable.lower() != str(venv_python.resolve()).lower():
+            import subprocess
+            res = subprocess.run([str(venv_python), str(Path(__file__).resolve())] + sys.argv[1:])
+            sys.exit(res.returncode)
+
+        _safe_print("\n" + "=" * 65)
+        _safe_print("[!] DASHBOARD DEPENDENCY MISSING")
+        _safe_print("    FastAPI and Uvicorn are required to launch the game dashboard.")
+        _safe_print("    Please run one of the following commands in your terminal:")
+        _safe_print("        .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
+        _safe_print("    or directly run with the project virtual environment:")
+        _safe_print("        .\\.venv\\Scripts\\python.exe dashboard.py")
+        _safe_print("=" * 65 + "\n")
         sys.exit(1)
 
     hub = OfficeDashboardHub(config_path=config_path)
     app = create_app(hub)
 
     url = f"http://{host}:{port}"
-    print("\n" + "=" * 65)
-    print("🎮 AETHER OFFICE — VIRTUAL OFFICE GAME DASHBOARD")
-    print(f"   Server running at: {url}")
-    print("   Press CTRL+C to stop the dashboard server.")
-    print("=" * 65 + "\n")
+    _safe_print("\n" + "=" * 65)
+    _safe_print("🎮 AETHER OFFICE — VIRTUAL OFFICE GAME DASHBOARD")
+    _safe_print(f"   Server running at: {url}")
+    _safe_print("   PixelOffice Event Bridge: Active on UDP 127.0.0.1:9997")
+    _safe_print("   Press CTRL+C to stop the dashboard server.")
+    _safe_print("=" * 65 + "\n")
 
     if auto_open:
         def _open_browser():

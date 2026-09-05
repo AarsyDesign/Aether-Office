@@ -101,10 +101,12 @@ py-modules = [
     "usage",
     "workflow",
     "workforce",
+    "pixel_bridge",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["."]
+norecursedirs = ["projects", ".venv", "build", "dist", ".git", "ui", "logs", "scratch"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

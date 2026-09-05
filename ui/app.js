@@ -1,10 +1,11 @@
 /**
- * AETHER OFFICE - RETRO TYCOON GAME DASHBOARD ENGINE
- * Interactive virtual office simulation, procedural pixel sprites, Web Audio SFX, and real-time SSE.
+ * AETHER OFFICE - 2D PIXEL ART GAME DASHBOARD & LIVE MULTI-AGENT BUILDER
+ * Connects HTML5 2D Canvas Engine, Real-Time SSE Event Stream,
+ * Real Multi-Agent Pipeline Execution, and Code Inspector with live Pytest.
  */
 
 // =============================================================================
-// 1. 8-BIT SOUND SYNTHESIZER (Pure Web Audio API, Zero Dependencies)
+// 1. 8-BIT SOUND SYNTHESIZER (Web Audio API, Zero Dependencies)
 // =============================================================================
 class RetroSoundEngine {
   constructor() {
@@ -68,7 +69,6 @@ class RetroSoundEngine {
     if (this.muted) return;
     this._init();
     if (!this.ctx) return;
-    // 8-bit coin pickup arpeggio (B5 -> E6)
     const notes = [987.77, 1318.51];
     notes.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
@@ -88,7 +88,6 @@ class RetroSoundEngine {
     if (this.muted) return;
     this._init();
     if (!this.ctx) return;
-    // Victory fanfare (C5 -> G5 -> C6)
     const notes = [523.25, 659.25, 783.99, 1046.50];
     notes.forEach((freq, idx) => {
       const osc = this.ctx.createOscillator();
@@ -111,10 +110,9 @@ const sfx = new RetroSoundEngine();
 
 
 // =============================================================================
-// 2. PROCEDURAL PIXEL ART AVATAR GENERATOR (SVG)
+// 2. PROCEDURAL PIXEL AVATAR GENERATOR (SVG)
 // =============================================================================
 function generatePixelAvatarSVG(name, role, department) {
-  // Simple deterministic hash
   let hash = 0;
   const str = (name || "") + (role || "") + (department || "");
   for (let i = 0; i < str.length; i++) {
@@ -139,93 +137,131 @@ function generatePixelAvatarSVG(name, role, department) {
   const skin = skinColors[hash % skinColors.length];
   const hair = hairColors[(hash >> 2) % hairColors.length];
   const shirt = deptColors[department] || "#3b82f6";
-  const hasGlasses = (hash % 3 === 0);
 
   return `
     <svg viewBox="0 0 16 16" width="100%" height="100%" shape-rendering="crispEdges">
-      <!-- Background -->
       <rect width="16" height="16" fill="#0f172a" />
-      
-      <!-- Hair Top -->
       <rect x="4" y="2" width="8" height="3" fill="${hair}" />
-      <rect x="3" y="3" width="10" height="2" fill="${hair}" />
-      
-      <!-- Head / Face -->
-      <rect x="4" y="4" width="8" height="6" fill="${skin}" />
-      
-      <!-- Eyes -->
-      <rect x="5" y="6" width="2" height="1" fill="#0f172a" />
-      <rect x="9" y="6" width="2" height="1" fill="#0f172a" />
-      
-      <!-- Glasses (optional) -->
-      ${hasGlasses ? `
-        <rect x="4" y="5" width="4" height="3" fill="none" stroke="#38bdf8" stroke-width="0.75" />
-        <rect x="8" y="5" width="4" height="3" fill="none" stroke="#38bdf8" stroke-width="0.75" />
-        <line x1="7" y1="6" x2="9" y2="6" stroke="#38bdf8" stroke-width="0.75" />
-      ` : ''}
-      
-      <!-- Mouth -->
-      <rect x="7" y="8" width="2" height="1" fill="#9f1239" />
-      
-      <!-- Shoulders / Shirt -->
-      <rect x="2" y="10" width="12" height="6" fill="${shirt}" />
-      
-      <!-- Collar / Tie -->
-      <polygon points="8,10 6,13 10,13" fill="#f8fafc" />
-      <rect x="7.5" y="11" width="1" height="4" fill="#0f172a" />
+      <rect x="3" y="4" width="10" height="2" fill="${hair}" />
+      <rect x="4" y="5" width="8" height="6" fill="${skin}" />
+      <rect x="5" y="7" width="2" height="2" fill="#0f172a" />
+      <rect x="9" y="7" width="2" height="2" fill="#0f172a" />
+      <rect x="6" y="9" width="4" height="1" fill="#be123c" />
+      <rect x="3" y="11" width="10" height="5" fill="${shirt}" />
     </svg>
   `;
 }
 
 
 // =============================================================================
-// 3. GAME STATE & APPLICATION CONTROLLER
+// 3. MAIN DASHBOARD APPLICATION CONTROLLER
 // =============================================================================
 class AetherGameDashboard {
   constructor() {
     this.state = null;
+    this.realProjects = [];
+    this.activeProjectId = null;
+    this.activeProjectFiles = {};
+    this.currentInspectedFile = null;
+
     this.autoTickTimer = null;
     this.autoTickInterval = 4000;
-    this.selectedEmployee = null;
-    this.activeTab = "quests";
+    this.activeTab = "projects"; // default to Real Projects tab
+    this.viewMode = "canvas";   // "canvas" | "grid"
 
     this.initElements();
+    this.initPixelCanvasWorld();
     this.attachEventListeners();
     this.initSSE();
     this.fetchState();
+    this.fetchRealProjects();
+
+    // Auto refresh projects list periodically
+    setInterval(() => this.fetchRealProjects(), 8000);
   }
 
   initElements() {
-    // Top HUD
+    // Top HUD Elements
     this.elCycleCounter = document.getElementById("hud-cycle");
     this.elTreasuryVal = document.getElementById("hud-treasury");
     this.elStaffVal = document.getElementById("hud-staff");
-    this.elQuestsVal = document.getElementById("hud-quests");
+    this.elRealApps = document.getElementById("hud-real-apps");
     this.elHealthVal = document.getElementById("hud-health");
+    this.bridgeStatusText = document.getElementById("bridge-status-text");
 
     // Controls
+    this.btnLaunchReal = document.getElementById("btn-launch-real-project");
+    this.btnToggleView = document.getElementById("btn-toggle-view");
     this.btnTick = document.getElementById("btn-step-tick");
     this.btnAutoTick = document.getElementById("btn-auto-tick");
-    this.btnNewQuest = document.getElementById("btn-new-quest");
     this.btnSfxToggle = document.getElementById("btn-sfx-toggle");
     this.btnCrtToggle = document.getElementById("btn-crt-toggle");
     this.crtOverlay = document.querySelector(".crt-overlay");
 
-    // Floor & Sidebar
+    // Viewport Containers
+    this.canvasWrapper = document.getElementById("canvas-wrapper");
     this.elFloorGrid = document.getElementById("floor-grid");
-    this.elSidebarContent = document.getElementById("sidebar-content");
+
+    // Sidebar & Tabs
+    this.tabProjects = document.getElementById("tab-projects");
     this.tabQuests = document.getElementById("tab-quests");
     this.tabLogs = document.getElementById("tab-logs");
-
-    // Ticker
+    this.countProjects = document.getElementById("count-projects");
+    this.elSidebarContent = document.getElementById("sidebar-content");
     this.elTickerText = document.getElementById("ticker-text");
 
     // Modals
+    this.modalLaunchProject = document.getElementById("modal-launch-project");
+    this.modalCodeInspector = document.getElementById("modal-code-inspector");
     this.modalDossier = document.getElementById("modal-dossier");
+    this.modalWhiteboard = document.getElementById("modal-whiteboard");
     this.modalNewQuest = document.getElementById("modal-new-quest");
+
+    // Code Inspector Inner Elements
+    this.inspectProjId = document.getElementById("inspect-proj-id");
+    this.inspectorFileList = document.getElementById("inspector-file-list");
+    this.inspectActiveFile = document.getElementById("inspect-active-file");
+    this.inspectCodeContent = document.getElementById("inspect-code-content");
+    this.btnCopyCode = document.getElementById("btn-copy-code");
+    this.btnRunPytest = document.getElementById("btn-run-pytest");
+    this.testConsoleDrawer = document.getElementById("test-console-drawer");
+    this.testConsoleOutput = document.getElementById("test-console-output");
+    this.testVerdictBadge = document.getElementById("test-verdict-badge");
+  }
+
+  initPixelCanvasWorld() {
+    if (window.PixelOfficeWorld) {
+      this.pixelWorld = new window.PixelOfficeWorld("pixel-canvas", {
+        sfx: sfx,
+        onSelectEmployee: (emp) => this.openDossier(emp),
+        onSelectWhiteboard: () => this.openWhiteboardModal(),
+      });
+    }
   }
 
   attachEventListeners() {
+    // Launch Real Project Modal
+    this.btnLaunchReal.addEventListener("click", () => {
+      sfx.playClick();
+      this.modalLaunchProject.classList.remove("hidden");
+    });
+
+    // View Toggle (Canvas vs Grid)
+    this.btnToggleView.addEventListener("click", () => {
+      sfx.playClick();
+      this.viewMode = this.viewMode === "canvas" ? "grid" : "canvas";
+      if (this.viewMode === "canvas") {
+        this.btnToggleView.textContent = "🎮 2D PIXEL VIEW";
+        this.canvasWrapper.classList.remove("hidden");
+        this.elFloorGrid.classList.add("hidden");
+      } else {
+        this.btnToggleView.textContent = "📋 ROOM MATRIX";
+        this.canvasWrapper.classList.add("hidden");
+        this.elFloorGrid.classList.remove("hidden");
+        this.renderFloorGrid();
+      }
+    });
+
     // Step Tick
     this.btnTick.addEventListener("click", () => {
       sfx.playClick();
@@ -238,12 +274,6 @@ class AetherGameDashboard {
       this.toggleAutoTick();
     });
 
-    // New Quest
-    this.btnNewQuest.addEventListener("click", () => {
-      sfx.playClick();
-      this.openNewQuestModal();
-    });
-
     // SFX Mute Toggle
     this.btnSfxToggle.addEventListener("click", () => {
       const active = sfx.toggleMute();
@@ -251,11 +281,10 @@ class AetherGameDashboard {
       this.btnSfxToggle.classList.toggle("toggled-off", !active);
       if (active) sfx.playClick();
     });
-    // Set initial button label
     this.btnSfxToggle.textContent = !sfx.muted ? "🔊 SFX: ON" : "🔇 SFX: OFF";
     this.btnSfxToggle.classList.toggle("toggled-off", sfx.muted);
 
-    // CRT Toggle
+    // CRT Scanlines Toggle
     this.btnCrtToggle.addEventListener("click", () => {
       sfx.playClick();
       this.crtOverlay.classList.toggle("disabled");
@@ -264,20 +293,25 @@ class AetherGameDashboard {
       this.btnCrtToggle.classList.toggle("toggled-off", !isEnabled);
     });
 
-    // Sidebar Tabs
+    // Sidebar Tabs Navigation
+    this.tabProjects.addEventListener("click", () => {
+      sfx.playClick();
+      this.activeTab = "projects";
+      this.updateSidebarTabs();
+      this.renderSidebar();
+    });
+
     this.tabQuests.addEventListener("click", () => {
       sfx.playClick();
       this.activeTab = "quests";
-      this.tabQuests.classList.add("active");
-      this.tabLogs.classList.remove("active");
+      this.updateSidebarTabs();
       this.renderSidebar();
     });
 
     this.tabLogs.addEventListener("click", () => {
       sfx.playClick();
       this.activeTab = "logs";
-      this.tabLogs.classList.add("active");
-      this.tabQuests.classList.remove("active");
+      this.updateSidebarTabs();
       this.renderSidebar();
     });
 
@@ -289,14 +323,69 @@ class AetherGameDashboard {
       });
     });
 
-    // New Quest Form Submit
-    const formQuest = document.getElementById("form-new-quest");
-    if (formQuest) {
-      formQuest.addEventListener("submit", (e) => {
-        e.preventDefault();
-        this.submitNewQuest();
+    // Launch Project Form & Template Auto-fill
+    const projTemplateSelect = document.getElementById("proj-template");
+    const projNameInput = document.getElementById("proj-name");
+    const projBriefInput = document.getElementById("proj-brief");
+
+    const templates = {
+      todo: {
+        name: "fast-todo-cli",
+        brief: "Build a robust CLI Todo application in Python with SQLite persistence. Provide add, list, complete, and delete commands. Write test_core.py with pytest suites."
+      },
+      api: {
+        name: "task-rest-api",
+        brief: "Create a modular REST API in Python using FastAPI with in-memory storage and Pydantic validation schemas. Include full CRUD endpoints and unit tests in test_core.py."
+      },
+      calc: {
+        name: "scientific-calc-cli",
+        brief: "Build a mathematical expression parser and scientific CLI calculator in Python. Handle operator precedence, parentheses, and square root. Include comprehensive unit tests."
+      },
+      weather: {
+        name: "weather-client-cli",
+        brief: "Build a weather forecast utility in Python with local disk caching and data formatting. Include test_core.py verifying cache and query logic."
+      }
+    };
+
+    projTemplateSelect.addEventListener("change", (e) => {
+      const selected = templates[e.target.value];
+      if (selected) {
+        projNameInput.value = selected.name;
+        projBriefInput.value = selected.brief;
+      }
+    });
+
+    const formLaunchProj = document.getElementById("form-launch-project");
+    formLaunchProj.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.submitLaunchRealProject();
+    });
+
+    // Code Inspector Copy Code
+    this.btnCopyCode.addEventListener("click", () => {
+      const code = this.inspectCodeContent.textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        sfx.playClick();
+        const orig = this.btnCopyCode.textContent;
+        this.btnCopyCode.textContent = "✓ COPIED!";
+        setTimeout(() => (this.btnCopyCode.textContent = orig), 2000);
       });
-    }
+    });
+
+    // Code Inspector Run Pytest
+    this.btnRunPytest.addEventListener("click", () => {
+      this.executeLivePytest();
+    });
+  }
+
+  updateSidebarTabs() {
+    this.tabProjects.classList.toggle("active", this.activeTab === "projects");
+    this.tabQuests.classList.toggle("active", this.activeTab === "quests");
+    this.tabLogs.classList.toggle("active", this.activeTab === "logs");
+  }
+
+  closeModals() {
+    document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
   }
 
   // ===========================================================================
@@ -320,7 +409,7 @@ class AetherGameDashboard {
       });
 
       evtSource.onerror = (err) => {
-        console.warn("SSE connection interrupted, retrying...", err);
+        console.warn("SSE stream interrupted, reconnecting...", err);
       };
     } catch (e) {
       console.error("Failed to initialize SSE:", e);
@@ -328,40 +417,198 @@ class AetherGameDashboard {
   }
 
   handleLiveEvent(evt) {
-    // Add to ticker
     const timeStr = new Date().toLocaleTimeString();
-    const eventName = evt.event_type.replace(/_/g, " ");
+    const eventName = (evt.event_type || "").replace(/_/g, " ");
     const role = evt.agent_role ? `[${evt.agent_role}]` : "";
     const msg = `${timeStr} ⚡ ${eventName} ${role}`;
 
-    // Append to live marquee
+    // Add to ticker
     if (this.elTickerText) {
       this.elTickerText.textContent = `${msg}  ✦  ${this.elTickerText.textContent.slice(0, 300)}`;
     }
 
-    // Sound feedback based on event type
+    // Forward to 2D Pixel Canvas World
+    if (this.pixelWorld) {
+      this.pixelWorld.handleEvent(evt);
+    }
+
+    // Audio cues
     if (evt.event_type.includes("COMPLETED")) {
       sfx.playChime();
-    } else if (evt.event_type.includes("TICK")) {
+      this.fetchRealProjects();
+    } else if (evt.event_type.includes("STARTED")) {
       sfx.playTick();
     }
 
-    // Refresh state
     this.fetchState();
   }
 
   // ===========================================================================
-  // API CALLS
+  // API CALLS: STATE, OBJECTIVES & REAL PROJECTS
   // ===========================================================================
   async fetchState() {
     try {
       const res = await fetch("/api/state");
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       this.state = data;
       this.render();
     } catch (err) {
-      console.error("Failed to fetch office state:", err);
+      console.error("Failed to fetch state:", err);
+    }
+  }
+
+  async fetchRealProjects() {
+    try {
+      const res = await fetch("/api/projects");
+      if (!res.ok) return;
+      const data = await res.json();
+      this.realProjects = data.projects || [];
+      if (this.countProjects) {
+        this.countProjects.textContent = this.realProjects.length;
+      }
+      if (this.elRealApps) {
+        this.elRealApps.textContent = `${this.realProjects.length} Built`;
+      }
+      if (this.activeTab === "projects") {
+        this.renderSidebar();
+      }
+    } catch (err) {
+      console.error("Failed to fetch real projects:", err);
+    }
+  }
+
+  async submitLaunchRealProject() {
+    const nameInput = document.getElementById("proj-name");
+    const briefInput = document.getElementById("proj-brief");
+    const modeSelect = document.getElementById("proj-mode");
+
+    const payload = {
+      name: nameInput.value.trim(),
+      brief: briefInput.value.trim(),
+      mode: modeSelect.value,
+    };
+
+    if (!payload.brief) {
+      alert("Please enter a project brief!");
+      return;
+    }
+
+    try {
+      sfx.playFanfare();
+      this.closeModals();
+
+      const res = await fetch("/api/projects/launch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (this.elTickerText) {
+        this.elTickerText.textContent = `🚀 REAL BUILD STARTED: ${data.project.project_id} (Mode: ${payload.mode})  ✦  ${this.elTickerText.textContent}`;
+      }
+
+      this.activeTab = "projects";
+      this.updateSidebarTabs();
+      await this.fetchRealProjects();
+    } catch (err) {
+      alert(`Failed to launch real build: ${err.message}`);
+    }
+  }
+
+  async openCodeInspector(projectId) {
+    this.activeProjectId = projectId;
+    this.inspectProjId.textContent = projectId;
+    this.inspectorFileList.innerHTML = "<div style='color: #94a3b8; font-size: 0.7rem; padding: 6px;'>Loading files...</div>";
+    this.inspectCodeContent.innerHTML = "<code>Loading source code...</code>";
+    this.testConsoleDrawer.classList.add("hidden");
+
+    this.modalCodeInspector.classList.remove("hidden");
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/files`);
+      if (!res.ok) throw new Error("Could not load project files");
+      const data = await res.json();
+      this.activeProjectFiles = data.contents || {};
+
+      this.renderInspectorFiles(data.files || []);
+    } catch (err) {
+      this.inspectCodeContent.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  renderInspectorFiles(files) {
+    this.inspectorFileList.innerHTML = "";
+    if (files.length === 0) {
+      this.inspectorFileList.innerHTML = "<div style='color: #94a3b8; font-size: 0.7rem;'>No files yet</div>";
+      return;
+    }
+
+    files.forEach((filename, idx) => {
+      const item = document.createElement("div");
+      item.className = `file-item ${idx === 0 ? "active" : ""}`;
+
+      let icon = "📄";
+      if (filename.endsWith(".py")) icon = "🐍";
+      if (filename.endsWith(".md")) icon = "📝";
+      if (filename.endsWith(".json")) icon = "⚙️";
+
+      item.innerHTML = `<span>${icon}</span><span>${filename}</span>`;
+      item.addEventListener("click", () => {
+        sfx.playClick();
+        document.querySelectorAll(".file-item").forEach(el => el.classList.remove("active"));
+        item.classList.add("active");
+        this.viewFileContent(filename);
+      });
+      this.inspectorFileList.appendChild(item);
+    });
+
+    // Default to first file (or core.py)
+    const defFile = files.includes("core.py") ? "core.py" : files[0];
+    this.viewFileContent(defFile);
+  }
+
+  viewFileContent(filename) {
+    this.currentInspectedFile = filename;
+    this.inspectActiveFile.textContent = filename;
+    const content = this.activeProjectFiles[filename] || "";
+    this.inspectCodeContent.textContent = content;
+  }
+
+  async executeLivePytest() {
+    if (!this.activeProjectId) return;
+    sfx.playClick();
+
+    this.btnRunPytest.disabled = true;
+    this.btnRunPytest.textContent = "⏳ RUNNING PYTEST...";
+    this.testConsoleDrawer.classList.remove("hidden");
+    this.testVerdictBadge.textContent = "TESTING...";
+    this.testVerdictBadge.className = "badge warning";
+    this.testConsoleOutput.textContent = `[Aether Testbench] Executing pytest projects/${this.activeProjectId}...\n`;
+
+    try {
+      const res = await fetch(`/api/projects/${this.activeProjectId}/run-tests`, {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        sfx.playFanfare();
+        this.testVerdictBadge.textContent = `PASS (${data.duration}s)`;
+        this.testVerdictBadge.className = "badge success";
+      } else {
+        this.testVerdictBadge.textContent = "FAIL";
+        this.testVerdictBadge.className = "badge danger";
+      }
+
+      this.testConsoleOutput.textContent = data.stdout || data.stderr || data.error || "Execution completed with 0 logs.";
+    } catch (err) {
+      this.testVerdictBadge.textContent = "ERROR";
+      this.testConsoleOutput.textContent = `Failed to run pytest: ${err.message}`;
+    } finally {
+      this.btnRunPytest.disabled = false;
+      this.btnRunPytest.textContent = "▶️ RUN PYTEST LIVE";
     }
   }
 
@@ -369,12 +616,11 @@ class AetherGameDashboard {
     try {
       this.btnTick.disabled = true;
       this.btnTick.textContent = "⏳ TICKING...";
-      const res = await fetch("/api/scheduler/tick", {
+      await fetch("/api/scheduler/tick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ execute: true }),
       });
-      const data = await res.json();
       sfx.playTick();
       await this.fetchState();
     } catch (err) {
@@ -400,54 +646,25 @@ class AetherGameDashboard {
     }
   }
 
-  async submitNewQuest() {
-    const titleInput = document.getElementById("quest-title");
-    const descInput = document.getElementById("quest-desc");
-    const budgetInput = document.getElementById("quest-budget");
-    const prioritySelect = document.getElementById("quest-priority");
+  openDossier(emp) {
+    if (!emp) return;
+    sfx.playClick();
+    document.getElementById("dossier-name").textContent = emp.name;
+    document.getElementById("dossier-title").textContent = emp.rpg_class || emp.title || emp.role_id;
+    document.getElementById("dossier-dept").textContent = (emp.department_id || "OFFICE").toUpperCase();
+    document.getElementById("stat-status").textContent = (emp.availability || "AVAILABLE").toUpperCase();
+    document.getElementById("stat-task").textContent = emp.current_task ? emp.current_task.title : "Standby";
+    document.getElementById("stat-caps").textContent = (emp.capabilities || []).join(", ") || "General specialist";
 
-    const payload = {
-      title: titleInput.value.trim(),
-      description: descInput.value.trim(),
-      budget: parseFloat(budgetInput.value) || 0.0,
-      priority: prioritySelect.value,
-    };
+    const avatarSvg = generatePixelAvatarSVG(emp.name, emp.role_id, emp.department_id);
+    document.getElementById("dossier-avatar").innerHTML = avatarSvg;
 
-    if (!payload.title) {
-      alert("Please provide an objective title!");
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/objectives", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      sfx.playFanfare();
-      this.closeModals();
-      const formEl = document.getElementById("form-new-quest");
-      if (formEl) formEl.reset();
-      await this.fetchState();
-    } catch (err) {
-      alert(`Failed to create objective: ${err.message}`);
-    }
+    this.modalDossier.classList.remove("hidden");
   }
 
-  async runObjectiveStep(objectiveId) {
-    sfx.playClick();
-    try {
-      await fetch(`/api/objectives/${objectiveId}/run`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ticks: 5 }),
-      });
-      sfx.playTick();
-      await this.fetchState();
-    } catch (err) {
-      console.error("Error running objective:", err);
-    }
+  openWhiteboardModal() {
+    sfx.playFanfare();
+    this.modalWhiteboard.classList.remove("hidden");
   }
 
   // ===========================================================================
@@ -456,7 +673,17 @@ class AetherGameDashboard {
   render() {
     if (!this.state) return;
     this.renderHUD();
-    this.renderFloor();
+
+    // Update 2D Pixel Canvas World
+    if (this.pixelWorld) {
+      this.pixelWorld.updateState(this.state);
+    }
+
+    // Update Room Grid (if visible)
+    if (this.viewMode === "grid") {
+      this.renderFloorGrid();
+    }
+
     this.renderSidebar();
   }
 
@@ -467,12 +694,126 @@ class AetherGameDashboard {
     this.elCycleCounter.textContent = `CYCLE #${String(hud.ticks || 0).padStart(4, "0")}`;
     this.elTreasuryVal.textContent = `$${hud.treasury_funds.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
     this.elStaffVal.textContent = `${hud.total_workforce} (${hud.available_workforce} Avail / ${hud.busy_workforce} Busy)`;
-    this.elQuestsVal.textContent = `${hud.active_quests} Active / ${hud.completed_quests} Done`;
     this.elHealthVal.textContent = `${hud.system_health}%`;
+
+    if (this.bridgeStatusText && hud.pixel_bridge_target) {
+      this.bridgeStatusText.textContent = `PIXELOFFICE: ${hud.pixel_bridge_target.split(' ')[0]}`;
+    }
   }
 
-  renderFloor() {
-    if (!this.state.rooms || !this.elFloorGrid) return;
+  renderSidebar() {
+    if (!this.elSidebarContent) return;
+    this.elSidebarContent.innerHTML = "";
+
+    if (this.activeTab === "projects") {
+      this.renderProjectsTab();
+    } else if (this.activeTab === "quests") {
+      this.renderQuestsTab();
+    } else {
+      this.renderLogsTab();
+    }
+  }
+
+  renderProjectsTab() {
+    if (this.realProjects.length === 0) {
+      this.elSidebarContent.innerHTML = `
+        <div style="text-align: center; padding: 24px 12px; color: #94a3b8; font-size: 0.75rem;">
+          <div style="font-size: 2rem; margin-bottom: 8px;">🚀</div>
+          <div style="font-family: var(--font-retro); margin-bottom: 6px; color: #cbd5e1;">NO REAL BUILDS YET</div>
+          <p style="margin-bottom: 14px;">Click the green button above to dispatch the AI dev team to write and test real Python code.</p>
+          <button class="retro-btn action" id="btn-empty-launch">⚡ LAUNCH FIRST BUILD</button>
+        </div>
+      `;
+      const btn = document.getElementById("btn-empty-launch");
+      if (btn) btn.addEventListener("click", () => this.modalLaunchProject.classList.remove("hidden"));
+      return;
+    }
+
+    this.realProjects.forEach((proj) => {
+      const card = document.createElement("div");
+      card.className = "real-project-item";
+
+      const statusClass = (proj.status || "PENDING").toLowerCase();
+
+      card.innerHTML = `
+        <div class="real-project-title-row">
+          <span class="real-project-name">${proj.name}</span>
+          <span class="real-project-status ${statusClass}">${proj.status}</span>
+        </div>
+        <div class="real-project-meta">
+          <div>📁 <strong>${proj.files_count} files</strong> generated on disk</div>
+          <div style="color: #64748b; font-size: 0.6rem; margin-top: 2px;">${proj.id}</div>
+          ${proj.brief_preview ? `<div style="margin-top: 4px; font-style: italic; color: #cbd5e1;">"${proj.brief_preview.slice(0, 80)}..."</div>` : ""}
+        </div>
+        <div class="real-project-actions">
+          <button class="retro-btn small primary btn-inspect" data-pid="${proj.id}">
+            📂 INSPECT CODE
+          </button>
+        </div>
+      `;
+
+      card.querySelector(".btn-inspect").addEventListener("click", () => {
+        sfx.playClick();
+        this.openCodeInspector(proj.id);
+      });
+
+      this.elSidebarContent.appendChild(card);
+    });
+  }
+
+  renderQuestsTab() {
+    const objectives = this.state.objectives || [];
+    if (objectives.length === 0) {
+      this.elSidebarContent.innerHTML = `
+        <div style="text-align: center; padding: 24px; color: #94a3b8; font-size: 0.75rem;">
+          <div style="font-size: 1.8rem; margin-bottom: 8px;">🎯</div>
+          <div>No business objectives active.</div>
+        </div>
+      `;
+      return;
+    }
+
+    objectives.forEach(obj => {
+      const item = document.createElement("div");
+      item.className = "real-project-item";
+      item.innerHTML = `
+        <div class="real-project-title-row">
+          <span class="real-project-name">${obj.title}</span>
+          <span class="real-project-status completed">${obj.status}</span>
+        </div>
+        <div class="real-project-meta">
+          <span>Grade: <strong>${obj.quality_info ? obj.quality_info.grade : "A"}</strong></span>
+          <span>Milestones: ${obj.milestones.length}</span>
+        </div>
+      `;
+      this.elSidebarContent.appendChild(item);
+    });
+  }
+
+  renderLogsTab() {
+    const logs = this.state.recent_events || [];
+    const container = document.createElement("div");
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.style.gap = "6px";
+
+    logs.forEach(evt => {
+      const row = document.createElement("div");
+      row.style.background = "#0f172a";
+      row.style.padding = "6px 8px";
+      row.style.borderRadius = "4px";
+      row.style.fontSize = "0.7rem";
+      row.style.fontFamily = "var(--font-mono)";
+      row.style.color = "#cbd5e1";
+      row.innerHTML = `<span style="color: #38bdf8;">${evt.event_type}</span>: ${evt.message || evt.agent_role || ""}`;
+      container.appendChild(row);
+    });
+
+    this.elSidebarContent.appendChild(container);
+  }
+
+  renderFloorGrid() {
+    if (!this.state || !this.state.rooms || !this.elFloorGrid) return;
     this.elFloorGrid.innerHTML = "";
 
     this.state.rooms.forEach((room) => {
@@ -480,7 +821,6 @@ class AetherGameDashboard {
       roomCard.className = "office-room";
       roomCard.style.borderColor = room.theme || "#38bdf8";
 
-      // Room Header
       const header = document.createElement("div");
       header.className = "room-header";
       header.innerHTML = `
@@ -492,63 +832,21 @@ class AetherGameDashboard {
       `;
       roomCard.appendChild(header);
 
-      // Room Interior Grid
       const interior = document.createElement("div");
       interior.className = "room-interior";
 
       room.employees.forEach((emp) => {
-        const isBusy = emp.availability === "busy" || emp.live_state === "WORKING";
-        const isOffline = emp.status === "inactive" || emp.availability === "offline";
-
-        // Status bubble text
-        let bubbleText = "☕ Break";
-        let bubbleIcon = "☕";
-        if (isBusy) {
-          bubbleText = emp.current_task ? emp.current_task.title.slice(0, 14) + "..." : "Working";
-          bubbleIcon = "💬";
-        } else if (isOffline) {
-          bubbleText = "Offline";
-          bubbleIcon = "💤";
-        }
-
         const workstation = document.createElement("div");
         workstation.className = "workstation";
-        workstation.dataset.empId = emp.id;
-
-        // Custom avatar path or fallback to procedural SVG
-        const customAvatarSrc = `/static/assets/custom/avatars/${emp.id}.png`;
         const avatarSvg = generatePixelAvatarSVG(emp.name, emp.role_id, emp.department_id);
 
         workstation.innerHTML = `
-          <div class="status-bubble">
-            <span>${bubbleIcon}</span>
-            <span>${bubbleText}</span>
-          </div>
-          <div class="avatar-container" id="avatar-${emp.id}">
-            ${avatarSvg}
-          </div>
-          <div class="desk-monitor">
-            <div class="screen-light ${isBusy ? "active" : isOffline ? "offline" : "idle"}"></div>
-          </div>
-          <div class="emp-name" title="${emp.name}">${emp.name}</div>
-          <div class="emp-role" title="${emp.rpg_class}">${emp.rpg_class}</div>
+          <div class="status-bubble"><span>☕</span><span>${emp.live_state || "Standby"}</span></div>
+          <div class="avatar-container">${avatarSvg}</div>
+          <div class="emp-name">${emp.name}</div>
+          <div class="emp-role">${emp.rpg_class}</div>
         `;
-
-        // Check if custom avatar image exists, and replace if loaded
-        const imgTest = new Image();
-        imgTest.src = customAvatarSrc;
-        imgTest.onload = () => {
-          const container = workstation.querySelector(`#avatar-${emp.id}`);
-          if (container) {
-            container.innerHTML = `<img src="${customAvatarSrc}" alt="${emp.name}" />`;
-          }
-        };
-
-        workstation.addEventListener("click", () => {
-          sfx.playClick();
-          this.openEmployeeDossier(emp);
-        });
-
+        workstation.addEventListener("click", () => this.openDossier(emp));
         interior.appendChild(workstation);
       });
 
@@ -556,134 +854,9 @@ class AetherGameDashboard {
       this.elFloorGrid.appendChild(roomCard);
     });
   }
-
-  renderSidebar() {
-    if (!this.elSidebarContent) return;
-    this.elSidebarContent.innerHTML = "";
-
-    if (this.activeTab === "quests") {
-      this.renderQuestsList();
-    } else {
-      this.renderLogsList();
-    }
-  }
-
-  renderQuestsList() {
-    const objectives = this.state.objectives || [];
-    if (objectives.length === 0) {
-      this.elSidebarContent.innerHTML = `
-        <div style="text-align: center; color: var(--hud-muted); padding: 30px 10px;">
-          <p style="font-family: var(--font-retro); font-size: 0.7rem; margin-bottom: 8px;">NO ACTIVE QUESTS</p>
-          <p style="font-size: 0.8rem;">Click <strong>+ NEW QUEST</strong> above to launch your first corporate objective!</p>
-        </div>
-      `;
-      return;
-    }
-
-    objectives.forEach((obj) => {
-      const card = document.createElement("div");
-      card.className = "quest-card";
-
-      const statusClass = `status-${obj.status.toLowerCase().replace(/_/g, "-")}`;
-      const qualityGrade = obj.quality ? `${obj.quality.grade} (${obj.quality.score}/100)` : "Planning";
-
-      // Milestone progress bars
-      let milestoneHtml = "";
-      if (obj.milestones && obj.milestones.length > 0) {
-        milestoneHtml = `
-          <div class="milestones-pipeline" title="Milestones: ${obj.completed_milestones}/${obj.total_milestones} Done">
-            ${obj.milestones.map((m) => `<div class="milestone-step ${m.status === 'COMPLETED' ? 'done' : ''}"></div>`).join("")}
-          </div>
-        `;
-      }
-
-      card.innerHTML = `
-        <div class="quest-header">
-          <div class="quest-title">${obj.title}</div>
-          <span class="quest-status-badge ${statusClass}">${obj.status}</span>
-        </div>
-        <div class="quest-meta">
-          <span class="tag-badge">Strategy: ${obj.strategy}</span>
-          <span class="tag-badge">Grade: ${qualityGrade}</span>
-          <span class="tag-badge">Budget: $${obj.spent.toFixed(2)} / $${obj.budget.toFixed(2)}</span>
-        </div>
-        ${milestoneHtml}
-        <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
-          <button class="retro-btn primary btn-run-quest" data-obj-id="${obj.id}" style="padding: 4px 8px; font-size: 0.55rem;">
-            ⚡ EXECUTE STEP
-          </button>
-        </div>
-      `;
-
-      card.querySelector(".btn-run-quest").addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.runObjectiveStep(obj.id);
-      });
-
-      this.elSidebarContent.appendChild(card);
-    });
-  }
-
-  renderLogsList() {
-    const events = this.state.recent_events || [];
-    if (events.length === 0) {
-      this.elSidebarContent.innerHTML = `<div style="color: var(--hud-muted); padding: 20px;">No logs recorded yet.</div>`;
-      return;
-    }
-
-    events.forEach((ev) => {
-      const item = document.createElement("div");
-      item.style.cssText = "background: #0b1120; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px; font-size: 0.75rem; font-family: var(--font-mono);";
-      const time = ev.created_at ? ev.created_at.split("T")[1]?.slice(0, 8) : "--:--:--";
-      item.innerHTML = `
-        <div style="color: #38bdf8; font-weight: bold; margin-bottom: 2px;">[${time}] ${ev.event_type}</div>
-        <div style="color: #94a3b8; font-size: 0.7rem;">Agent: ${ev.agent_role || 'System'} | Project: ${ev.project_id || '-'}</div>
-      `;
-      this.elSidebarContent.appendChild(item);
-    });
-  }
-
-  // ===========================================================================
-  // MODALS
-  // ===========================================================================
-  openEmployeeDossier(emp) {
-    this.selectedEmployee = emp;
-    const avatarContainer = document.getElementById("dossier-avatar");
-    const customAvatarSrc = `/static/assets/custom/avatars/${emp.id}.png`;
-
-    avatarContainer.innerHTML = generatePixelAvatarSVG(emp.name, emp.role_id, emp.department_id);
-    const imgTest = new Image();
-    imgTest.src = customAvatarSrc;
-    imgTest.onload = () => {
-      avatarContainer.innerHTML = `<img src="${customAvatarSrc}" alt="${emp.name}" />`;
-    };
-
-    document.getElementById("dossier-name").textContent = emp.name;
-    document.getElementById("dossier-title").textContent = `${emp.rpg_class} • Level ${emp.level}`;
-    document.getElementById("dossier-dept").textContent = emp.department_id.toUpperCase();
-
-    // Stats
-    document.getElementById("stat-level").textContent = `Lv. ${emp.level}`;
-    document.getElementById("stat-status").textContent = emp.availability.toUpperCase();
-    document.getElementById("stat-caps").textContent = emp.capabilities.join(", ") || "General Tasks";
-    document.getElementById("stat-task").textContent = emp.current_task ? emp.current_task.title : "Standby / Available";
-
-    this.modalDossier.classList.remove("hidden");
-  }
-
-  openNewQuestModal() {
-    this.modalNewQuest.classList.remove("hidden");
-    const titleInput = document.getElementById("quest-title");
-    if (titleInput) titleInput.focus();
-  }
-
-  closeModals() {
-    this.modalDossier.classList.add("hidden");
-    this.modalNewQuest.classList.add("hidden");
-  }
 }
 
-// Initialize on DOM load
+// Instantiate on DOM load
 window.addEventListener("DOMContentLoaded", () => {
-  window.aetherGame = new AetherGameDashboard();
+  window.aetherDashboard = new AetherGameDashboard();
 });

@@ -1067,3 +1067,80 @@ def create_default_organization(event_bus: Optional[EventBus] = None) -> tuple[O
         )
 
     return org, org.employees
+
+
+def seed_full_workforce(org: Organization) -> Organization:
+    """Populate all 37 specialized roles with authentic Indonesian specialists if not already hired."""
+    # Mapping for all 37 specialized Indonesian employees
+    indonesian_specialists = [
+        # Engineering
+        ("pm_001", "Budi Santoso", "pm", "product", ["task_breakdown", "planning", "handoff", "prioritization"]),
+        ("conceptor_001", "Dewi Lestari", "conceptor", "product", ["requirements_analysis", "acceptance_criteria", "user_stories", "technical_design"]),
+        ("planner_001", "Rian Pratama", "planner", "engineering", ["software_architecture", "dependency_graph", "topological_sort", "implementation_planning"]),
+        ("developer_001", "Eko Prasetyo", "developer", "engineering", ["python", "modular_coding", "syntax_validation", "debugging", "unit_generation"]),
+        ("qa_001", "Ratna Sari", "qa", "engineering", ["automated_testing", "code_review", "bug_diagnosis", "test_runner"]),
+        ("architect_001", "Arya Kusuma", "architect", "engineering", ["system_design", "scalability", "microservices", "api_design"]),
+        ("backend_001", "Agus Hermawan", "backend_developer", "engineering", ["python", "api", "database", "sqlite", "modular_coding"]),
+        ("frontend_001", "Fajar Nugraha", "frontend_developer", "engineering", ["html", "css", "javascript", "ui_components"]),
+        ("fullstack_001", "Dimas Setiawan", "fullstack_developer", "engineering", ["python", "modular_coding", "syntax_validation", "debugging", "unit_generation"]),
+        ("mobile_001", "Bayu Pratama", "mobile_developer", "engineering", ["mobile", "flutter", "native_ui"]),
+        ("qa_eng_001", "Fitri Handayani", "qa_engineer", "engineering", ["automated_testing", "code_review", "bug_diagnosis", "test_runner"]),
+        ("devops_001", "Hendra Gunawan", "devops_engineer", "engineering", ["docker", "ci_cd", "cloud", "scripting"]),
+        ("security_001", "Teguh Wibowo", "security_engineer", "engineering", ["security_audit", "vulnerability_scan", "auth_review"]),
+        ("data_eng_001", "Rizky Ramadhan", "data_engineer", "engineering", ["sql", "etl", "data_modeling"]),
+        
+        # Design
+        ("ui_001", "Maya Indah", "ui_designer", "design", ["ui_design", "design_systems", "layout", "color_theory"]),
+        ("ux_001", "Siti Rahma", "ux_designer", "design", ["ux_research", "wireframing", "user_flows"]),
+        ("graphic_001", "Nadia Safitri", "graphic_designer", "design", ["graphic_design", "illustration", "branding"]),
+        ("brand_001", "Dian Sastro", "brand_designer", "design", ["branding", "typography", "style_guides"]),
+        ("motion_001", "Yoga Pratama", "motion_designer", "design", ["animation", "motion_graphics", "transitions"]),
+        
+        # Marketing
+        ("mkt_strat_001", "Indra Wijaya", "marketing_strategist", "marketing", ["campaign_strategy", "audience_targeting", "gtm"]),
+        ("copy_001", "Laras Wulandari", "copywriter", "marketing", ["copywriting", "creative_writing", "messaging"]),
+        ("seo_001", "Surya Saputra", "seo_specialist", "marketing", ["seo", "keyword_research", "content_optimization"]),
+        ("socmed_001", "Annisa Putri", "social_media_manager", "marketing", ["social_media", "community_updates", "viral_hooking"]),
+        ("content_001", "Mega Utami", "content_strategist", "marketing", ["content_planning", "editorial_calendar", "content_funnels"]),
+        ("email_001", "Gita Gutawa", "email_marketer", "marketing", ["email_copy", "newsletters", "conversion_optimization"]),
+        
+        # Research
+        ("research_001", "Bambang Pamungkas", "researcher", "research", ["deep_research", "information_synthesis", "technical_writing"]),
+        ("data_anl_001", "Wahyu Hidayat", "data_analyst", "research", ["data_analysis", "statistics", "visualization"]),
+        ("mkt_res_001", "Putri Melati", "market_researcher", "research", ["market_research", "competitor_intel", "pricing_research"]),
+        ("comp_anl_001", "Arief Budiman", "competitive_analyst", "research", ["competitor_intel", "feature_matrix", "swot"]),
+        
+        # Operations
+        ("ops_mgr_001", "Tri Haryanto", "operations_manager", "operations", ["workflow_optimization", "resource_allocation", "process_management"]),
+        ("proj_coord_001", "Wulan Guritno", "project_coordinator", "operations", ["handoff_coordination", "tracking", "reporting"]),
+        ("docs_001", "Intan Permata", "documentation_specialist", "operations", ["documentation", "markdown", "knowledge_base"]),
+        
+        # Business
+        ("sales_001", "Doni Salman", "sales", "business", ["sales_pitch", "proposals", "negotiation"]),
+        ("acc_mgr_001", "Reza Rahadian", "account_manager", "business", ["client_communication", "relationship_management"]),
+        ("finance_001", "Sri Mulyani", "finance", "business", ["budgeting", "cost_estimation", "roi_analysis"]),
+        
+        # Support
+        ("support_001", "Lukman Sardi", "support_specialist", "support", ["ticket_resolution", "customer_guidance", "troubleshooting"]),
+        ("comm_mgr_001", "Chicco Jerikho", "community_manager", "support", ["community_moderation", "event_hosting", "feedback_collection"]),
+    ]
+
+    for emp_id, name, role_id, dept_id, caps in indonesian_specialists:
+        if not org.get_employee(emp_id):
+            # Check if role exists in catalog
+            if not org.roles.get(role_id):
+                org.register_role(Role(role_id=role_id, name=role_id.replace("_", " ").title(), department=dept_id, capabilities=caps))
+            org.hire(
+                employee_id=emp_id,
+                name=name,
+                role=role_id,
+                department=dept_id,
+                capabilities=caps,
+                personality={
+                    "traits": ["profesional", "kolaboratif", "tangkas", "gotong_royong"],
+                    "communication_style": "terstruktur_dan_santun",
+                    "decision_style": "musyawarah_mufakat",
+                },
+            )
+    return org
+

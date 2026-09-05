@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aether Office — Virtual Office Tycoon Dashboard</title>
+  <title>Aether Office — 2D Pixel Art AI Autonomous Office & Live Builder</title>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,9 +28,15 @@
         <div class="brand-icon">🏢</div>
         <div>
           <div class="brand-title">AETHER OFFICE</div>
-          <div class="brand-badge">
-            <span class="pulsing-dot"></span>
-            <span>SIMULATION ACTIVE</span>
+          <div style="display: flex; gap: 6px; align-items: center; margin-top: 2px;">
+            <div class="brand-badge">
+              <span class="pulsing-dot"></span>
+              <span>SIMULATION ACTIVE</span>
+            </div>
+            <div class="bridge-badge" title="Streaming real-time events to PixelOffice (UDP 127.0.0.1:9997)">
+              <span class="bridge-dot"></span>
+              <span id="bridge-status-text">PIXELOFFICE: UDP 9997</span>
+            </div>
           </div>
         </div>
       </div>
@@ -62,10 +68,10 @@
         </div>
 
         <div class="gauge-item">
-          <div class="gauge-icon">🎯</div>
+          <div class="gauge-icon">🚀</div>
           <div class="gauge-data">
-            <span class="gauge-label">Campaigns</span>
-            <span class="gauge-val cyan" id="hud-quests">0 Active / 0 Done</span>
+            <span class="gauge-label">Real Apps</span>
+            <span class="gauge-val purple" id="hud-real-apps">0 Built</span>
           </div>
         </div>
 
@@ -80,14 +86,17 @@
 
       <!-- Action & Retro Controls -->
       <div class="hud-controls">
-        <button class="retro-btn primary" id="btn-step-tick" title="Step one scheduler cycle">
+        <button class="retro-btn action-pulse" id="btn-launch-real-project" title="Dispatch AI dev team to build a real application">
+          🚀 BUILD REAL APP
+        </button>
+        <button class="retro-btn primary" id="btn-toggle-view" title="Toggle between 2D Pixel Office Canvas and Room Cards">
+          🎮 2D PIXEL VIEW
+        </button>
+        <button class="retro-btn" id="btn-step-tick" title="Step one scheduler cycle">
           ⏩ STEP TICK
         </button>
         <button class="retro-btn" id="btn-auto-tick" title="Toggle automatic ticks">
           ▶️ AUTO: OFF
-        </button>
-        <button class="retro-btn action" id="btn-new-quest" title="Create a new objective">
-          + NEW QUEST
         </button>
         <button class="retro-btn" id="btn-sfx-toggle" title="Toggle 8-bit sound effects">
           🔊 SFX: ON
@@ -99,20 +108,30 @@
     </header>
 
     <!-- =====================================================================
-         MAIN VIEWPORT: FLOOR PLAN & CAMPAIGN SIDEBAR
+         MAIN VIEWPORT: 2D PIXEL CANVAS FLOOR & SIDEBAR
          ===================================================================== -->
     <main class="game-viewport">
-      <!-- 8-Room Interactive Office Floor -->
+      <!-- Office Floor Viewport -->
       <section class="office-floor" id="office-floor">
-        <div class="floor-grid" id="floor-grid">
+        <!-- 2D Pixel Canvas Mode (Default) -->
+        <div class="canvas-wrapper active" id="canvas-wrapper">
+          <canvas id="pixel-canvas"></canvas>
+          <div class="canvas-overlay-hint">
+            <span>🕹️ CLICK ANY AGENT: STATS & CODE | 📋 WHITEBOARD: DAG ARCHITECTURE | ☕ BAR: COFFEE BREAK</span>
+          </div>
+        </div>
+
+        <!-- 8-Room Department Card Grid Mode (Alternative view) -->
+        <div class="floor-grid hidden" id="floor-grid">
           <!-- Dynamically populated by app.js -->
         </div>
       </section>
 
-      <!-- Sidebar: Quests & Logs -->
+      <!-- Sidebar: Real Projects, Quests & Logs -->
       <aside class="game-sidebar">
         <div class="sidebar-tabs">
-          <button class="tab-btn active" id="tab-quests">🎯 QUESTS</button>
+          <button class="tab-btn active" id="tab-projects">🚀 REAL APPS (<span id="count-projects">0</span>)</button>
+          <button class="tab-btn" id="tab-quests">🎯 QUESTS</button>
           <button class="tab-btn" id="tab-logs">📜 LIVE LOGS</button>
         </div>
         <div class="sidebar-content" id="sidebar-content">
@@ -128,14 +147,114 @@
       <div class="ticker-label">NEWS FLASH</div>
       <div class="ticker-marquee">
         <span class="ticker-text" id="ticker-text">
-          ✦ Welcome to Aether Office Virtual Headquarters! Autonomous multi-agent simulation ready. Click any employee workstation to inspect character sheet.
+          ✦ Welcome to Aether Office 2D Pixel Headquarters! Autonomous multi-agent simulation ready. Click "BUILD REAL APP" to watch the team write, test, and generate real code files on disk!
         </span>
       </div>
     </footer>
   </div>
 
   <!-- =====================================================================
-       MODAL: EMPLOYEE CHARACTER DOSSIER
+       MODAL 1: LAUNCH REAL APP / MULTI-AGENT PROJECT (BUKAN DUMMY)
+       ===================================================================== -->
+  <div class="modal-overlay hidden" id="modal-launch-project">
+    <div class="retro-modal wide">
+      <div class="modal-header">
+        <span class="modal-title">🚀 DISPATCH AI TEAM — BUILD REAL SOFTWARE</span>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="form-launch-project">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="proj-template">Ready-to-Use Software Templates</label>
+            <select id="proj-template" class="retro-select">
+              <option value="">-- Select a template or write custom brief below --</option>
+              <option value="todo">📝 CLI Todo App with SQLite & Pytest Suite</option>
+              <option value="api">🌐 FastAPI REST API with Pydantic CRUD & In-Memory Store</option>
+              <option value="calc">🧮 Scientific Expression Calculator CLI & Math Parser</option>
+              <option value="weather">🌤️ Weather & Forecast Fetcher CLI with Caching</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="proj-name">Project Identifier / Name *</label>
+            <input type="text" id="proj-name" class="retro-input" placeholder="e.g. fast-todo-cli" required>
+          </div>
+
+          <div class="form-group">
+            <label for="proj-brief">Project Brief & Requirements *</label>
+            <textarea id="proj-brief" class="retro-textarea" rows="4" placeholder="Describe the software, features, exports, and unit tests to generate..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="proj-mode">Execution Engine</label>
+            <select id="proj-mode" class="retro-select">
+              <option value="mock" selected>⚡ Ultra-Fast Local Engine (Mock Simulation - Instant & 100% Reliable)</option>
+              <option value="llm">🧠 Live LLM Engine (Requires active server at config.yaml endpoint)</option>
+            </select>
+          </div>
+
+          <div class="modal-callout">
+            <span>💾 <strong>Real Output:</strong> PM, Conceptor, Developer, and QA will coordinate in real time. Validated Python code will be written to disk in <code>projects/&lt;project_name&gt;/</code>.</span>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+            <button type="button" class="retro-btn modal-cancel">CANCEL</button>
+            <button type="submit" class="retro-btn action">⚡ START LIVE BUILD</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 2: REAL CODE INSPECTOR & LIVE PYTEST RUNNER
+       ===================================================================== -->
+  <div class="modal-overlay hidden" id="modal-code-inspector">
+    <div class="retro-modal x-wide">
+      <div class="modal-header">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <span class="modal-title">📂 REAL CODE INSPECTOR</span>
+          <span class="project-badge" id="inspect-proj-id">project-id</span>
+        </div>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body inspector-layout">
+        <!-- File list sidebar -->
+        <div class="inspector-sidebar">
+          <div class="sidebar-header">GENERATED FILES</div>
+          <div class="file-tree" id="inspector-file-list">
+            <!-- Populated dynamically -->
+          </div>
+          <div style="margin-top: 16px;">
+            <button class="retro-btn primary" id="btn-run-pytest" style="width: 100%;">
+              ▶️ RUN PYTEST LIVE
+            </button>
+          </div>
+        </div>
+
+        <!-- Code Viewer & Test Console -->
+        <div class="inspector-main">
+          <div class="code-view-header">
+            <span id="inspect-active-file">core.py</span>
+            <button class="retro-btn small" id="btn-copy-code">📋 COPY</button>
+          </div>
+          <pre class="code-editor" id="inspect-code-content"><code>Select a file to inspect source code</code></pre>
+
+          <!-- Live Pytest Console Drawer -->
+          <div class="test-console-drawer hidden" id="test-console-drawer">
+            <div class="test-console-header">
+              <span>TERMINAL OUTPUT (PYTEST)</span>
+              <span id="test-verdict-badge" class="badge">RUNNING...</span>
+            </div>
+            <pre class="test-console-log" id="test-console-output"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 3: EMPLOYEE CHARACTER DOSSIER
        ===================================================================== -->
   <div class="modal-overlay hidden" id="modal-dossier">
     <div class="retro-modal">
@@ -146,7 +265,7 @@
       <div class="modal-body">
         <div class="dossier-header">
           <div class="dossier-avatar" id="dossier-avatar">
-            <!-- Pixel Avatar SVG or Custom Image -->
+            <!-- Pixel Avatar SVG -->
           </div>
           <div class="dossier-identity">
             <h2 id="dossier-name">Alex Reed</h2>
@@ -165,7 +284,7 @@
             <span class="stat-val" id="stat-status">AVAILABLE</span>
           </div>
           <div class="stat-item" style="grid-column: span 2;">
-            <span>Current Assignment:</span>
+            <span>Current Action:</span>
             <span class="stat-val" id="stat-task">None (Standby)</span>
           </div>
           <div class="stat-item" style="grid-column: span 2;">
@@ -178,7 +297,51 @@
   </div>
 
   <!-- =====================================================================
-       MODAL: NEW QUEST / OBJECTIVE FORM
+       MODAL 4: WHITEBOARD DAG ARCHITECTURE
+       ===================================================================== -->
+  <div class="modal-overlay hidden" id="modal-whiteboard">
+    <div class="retro-modal wide">
+      <div class="modal-header">
+        <span class="modal-title">📋 WAR ROOM — DAG PIPELINE ARCHITECTURE</span>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="whiteboard-view" id="whiteboard-diagram">
+          <div class="dag-pipeline-flow">
+            <div class="dag-node completed">
+              <div class="node-icon">📋</div>
+              <div class="node-title">1. Project Manager</div>
+              <div class="node-sub">Brief -> Tasks DAG</div>
+            </div>
+            <div class="dag-arrow">➔</div>
+            <div class="dag-node completed">
+              <div class="node-icon">📝</div>
+              <div class="node-title">2. Conceptor</div>
+              <div class="node-sub">Architecture & Specs</div>
+            </div>
+            <div class="dag-arrow">➔</div>
+            <div class="dag-node active">
+              <div class="node-icon">💻</div>
+              <div class="node-title">3. Developer (Chunked)</div>
+              <div class="node-sub">Plan -> Code Units</div>
+            </div>
+            <div class="dag-arrow">➔</div>
+            <div class="dag-node pending">
+              <div class="node-icon">🔍</div>
+              <div class="node-title">4. QA Engineer</div>
+              <div class="node-sub">Pytest & Syntax Fix</div>
+            </div>
+          </div>
+          <p style="font-size: 11px; color: #94a3b8; margin-top: 18px; line-height: 1.6;">
+            ✦ The Aether Adaptive Planning engine dynamically maps tasks across the 8 Indonesian departments. Developer writes chunked code files with retry loop and QA executes validation against unit tests.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL 5: NEW QUEST / OBJECTIVE FORM
        ===================================================================== -->
   <div class="modal-overlay hidden" id="modal-new-quest">
     <div class="retro-modal">
@@ -224,6 +387,8 @@
     </div>
   </div>
 
+  <!-- 2D Pixel Art World Engine -->
+  <script src="/static/pixel_world.js"></script>
   <!-- Game Logic Script -->
   <script src="/static/app.js"></script>
 </body>

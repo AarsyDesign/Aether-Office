@@ -31,10 +31,12 @@ def main():
     run_parser.add_argument("--config", default="config.yaml", help="Config file path")
     run_parser.add_argument("--name", default=None, help="Project name (auto-generated if not set)")
     run_parser.add_argument("--output", default=None, help="Output directory (default: projects/<name>)")
+    run_parser.add_argument("--mock", "--demo", dest="mock", action="store_true", help="Jalankan dalam mode simulasi offline tanpa server LLM")
 
     # status command
     status_parser = sub.add_parser("status", help="Show project status")
-    status_parser.add_argument("project_id", help="Project ID")
+    status_parser.add_argument("project_id", nargs="?", default=None, help="Project ID")
+    status_parser.add_argument("--project", dest="project_flag", default=None, help="Project ID alias")
 
     # events command
     events_parser = sub.add_parser("events", help="Show project events")
@@ -172,7 +174,7 @@ def main():
     dash_parser = sub.add_parser("dashboard", aliases=["ui"], help="Buka visual game dashboard interaktif Aether Office di browser")
     dash_parser.add_argument("--host", default="127.0.0.1", help="Host server dashboard (default: 127.0.0.1)")
     dash_parser.add_argument("--port", type=int, default=8000, help="Port server dashboard (default: 8000)")
-    dash_parser.add_argument("--no-browser", action="store_true", help="Jangan buka browser secara otomatis")
+    dash_parser.add_argument("--no-browser", "--no-open", dest="no_browser", action="store_true", help="Jangan buka browser secara otomatis")
     dash_parser.add_argument("--config", default="config.yaml", help="Path file konfigurasi")
 
     args = parser.parse_args()
@@ -249,13 +251,21 @@ def cmd_dashboard(args):
         import fastapi
         import uvicorn
     except ImportError:
+        # Auto-fallback: check if local .venv exists with installed dependencies
+        from pathlib import Path
+        venv_python = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
+        if venv_python.exists() and sys.executable.lower() != str(venv_python.resolve()).lower():
+            import subprocess
+            res = subprocess.run([str(venv_python), str(Path(__file__).resolve())] + sys.argv[1:])
+            sys.exit(res.returncode)
+
         print("\n" + "=" * 65)
         print("❌ DASHBOARD DEPENDENCY MISSING")
         print("   FastAPI dan Uvicorn dibutuhkan untuk menjalankan game dashboard.")
         print("   Silakan jalankan perintah instalasi berikut di terminal:")
-        print("       pip install -e \".[ui]\"")
-        print("   atau langsung:")
-        print("       pip install fastapi uvicorn")
+        print("       .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
+        print("   atau jalankan langsung menggunakan virtual environment:")
+        print("       .\\.venv\\Scripts\\python.exe cli.py dashboard")
         print("=" * 65 + "\n")
         sys.exit(1)
 
@@ -304,6 +314,11 @@ def cmd_run(args):
     print(f"   Output: {output_dir}")
     print(f"   Brief: {len(brief)} chars")
 
+    if getattr(args, "mock", False):
+        import os
+        os.environ["AETHER_MOCK_LLM"] = "1"
+        print("   ⚡ Mode Simulasi Offline / Mock Aktif (Tanpa koneksi LLM eksternal)")
+
     # Load config and run
     config = load_config(args.config)
     orchestrator = Orchestrator(config, project_id, output_dir)
@@ -311,6 +326,14 @@ def cmd_run(args):
     # Attach CLI real-time progress streamer to event bus
     streamer = CLIProgressStreamer()
     orchestrator.event_bus.subscribe(streamer.on_event)
+
+    # Attach PixelOffice bridge (UDP 9997 & HTTP 3003)
+    try:
+        from pixel_bridge import PixelOfficeBridge
+        pixel_bridge = PixelOfficeBridge(event_bus=orchestrator.event_bus)
+        pixel_bridge.start()
+    except Exception:
+        pass
 
     try:
         result = orchestrator.run(brief)
@@ -333,12 +356,17 @@ def cmd_status(args):
     db_path = config.get("project", {}).get("data_dir", "./data") + "/tasks.db"
     db = Database(db_path)
 
-    project = db.get_project(args.project_id)
-    if not project:
-        print(f"❌ Project not found: {args.project_id}")
+    project_id = args.project_id or getattr(args, "project_flag", None)
+    if not project_id:
+        print("❌ Project ID wajib diisi. Contoh: python cli.py status <project_id> atau --project <project_id>")
         return
 
-    tasks = db.get_tasks(args.project_id)
+    project = db.get_project(project_id)
+    if not project:
+        print(f"❌ Project not found: {project_id}")
+        return
+
+    tasks = db.get_tasks(project_id)
     print(f"\n📋 Project: {project['name']}")
     print(f"   Status: {project['status']}")
     print(f"   Created: {project['created_at']}")
@@ -420,14 +448,14 @@ def cmd_list(args=None):
 
 def _get_workforce_db():
     from db import Database
-    from workforce import create_default_organization
+    from workforce import create_default_organization, seed_full_workforce
     config = load_config()
     db_path = config.get("project", {}).get("data_dir", "./data") + "/tasks.db"
     db = Database(db_path)
-    # Seed default organization into DB if empty
-    if not db.get_departments():
-        org, _ = create_default_organization()
-        db.sync_organization_to_db(org)
+    # Seed default organization into DB if empty or missing roles
+    org, _ = create_default_organization()
+    seed_full_workforce(org)
+    db.sync_organization_to_db(org)
     return db
 
 

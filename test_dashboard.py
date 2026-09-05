@@ -156,3 +156,27 @@ def test_dashboard_fastapi_endpoints(test_hub):
     assert res_css.status_code == 200
     res_js = client.get("/static/app.js")
     assert res_js.status_code == 200
+    res_pixel = client.get("/static/pixel_world.js")
+    assert res_pixel.status_code == 200
+    assert "PixelOfficeWorld" in res_pixel.text
+
+    # 6. GET /api/projects
+    res_projs = client.get("/api/projects")
+    assert res_projs.status_code == 200
+    assert "projects" in res_projs.json()
+
+    # 7. POST /api/projects/launch
+    res_launch = client.post("/api/projects/launch", json={
+        "name": "fast-unit-test-proj",
+        "brief": "A brief for testing real project launcher",
+        "mode": "mock",
+    })
+    assert res_launch.status_code == 200
+    p_data = res_launch.json()["project"]
+    assert p_data["name"] == "fast-unit-test-proj"
+    p_id = p_data["project_id"]
+
+    # 8. GET /api/projects/{project_id}/files
+    res_files = client.get(f"/api/projects/{p_id}/files")
+    assert res_files.status_code == 200
+    assert "brief.md" in res_files.json()["files"]
