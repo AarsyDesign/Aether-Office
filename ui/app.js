@@ -216,6 +216,8 @@ class AetherGameDashboard {
     this.elSidebarContent = document.getElementById("sidebar-content");
     this.tabQuests = document.getElementById("tab-quests");
     this.tabLogs = document.getElementById("tab-logs");
+    this.tabCron = document.getElementById("tab-cron");
+    this.elCronsVal = document.getElementById("hud-crons");
 
     // Ticker
     this.elTickerText = document.getElementById("ticker-text");
@@ -270,6 +272,7 @@ class AetherGameDashboard {
       this.activeTab = "quests";
       this.tabQuests.classList.add("active");
       this.tabLogs.classList.remove("active");
+      if (this.tabCron) this.tabCron.classList.remove("active");
       this.renderSidebar();
     });
 
@@ -278,8 +281,20 @@ class AetherGameDashboard {
       this.activeTab = "logs";
       this.tabLogs.classList.add("active");
       this.tabQuests.classList.remove("active");
+      if (this.tabCron) this.tabCron.classList.remove("active");
       this.renderSidebar();
     });
+
+    if (this.tabCron) {
+      this.tabCron.addEventListener("click", () => {
+        sfx.playClick();
+        this.activeTab = "cron";
+        this.tabCron.classList.add("active");
+        this.tabQuests.classList.remove("active");
+        this.tabLogs.classList.remove("active");
+        this.renderSidebar();
+      });
+    }
 
     // Close Modals
     document.querySelectorAll(".modal-close, .modal-cancel").forEach((btn) => {
@@ -424,10 +439,15 @@ class AetherGameDashboard {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Server returned status ${res.status}`);
+      }
       const data = await res.json();
       sfx.playFanfare();
       this.closeModals();
-      formQuest.reset();
+      const formEl = document.getElementById("form-new-quest");
+      if (formEl) formEl.reset();
       await this.fetchState();
     } catch (err) {
       alert(`Failed to create objective: ${err.message}`);
@@ -437,11 +457,15 @@ class AetherGameDashboard {
   async runObjectiveStep(objectiveId) {
     sfx.playClick();
     try {
-      await fetch(`/api/objectives/${objectiveId}/run`, {
+      const res = await fetch(`/api/objectives/${objectiveId}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ticks: 5 }),
       });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        console.error("Error running objective:", errData);
+      }
       sfx.playTick();
       await this.fetchState();
     } catch (err) {
@@ -468,6 +492,9 @@ class AetherGameDashboard {
     this.elStaffVal.textContent = `${hud.total_workforce} (${hud.available_workforce} Avail / ${hud.busy_workforce} Busy)`;
     this.elQuestsVal.textContent = `${hud.active_quests} Active / ${hud.completed_quests} Done`;
     this.elHealthVal.textContent = `${hud.system_health}%`;
+    if (this.elCronsVal) {
+      this.elCronsVal.textContent = `${hud.active_crons || 0} Active`;
+    }
   }
 
   renderFloor() {
@@ -499,27 +526,59 @@ class AetherGameDashboard {
         const isBusy = emp.availability === "busy" || emp.live_state === "WORKING";
         const isOffline = emp.status === "inactive" || emp.availability === "offline";
 
-        // Status bubble text
+        // Status bubble text & source detection
         let bubbleText = "☕ Break";
         let bubbleIcon = "☕";
+        let sourceClass = "";
+        let sourceTag = "";
+
         if (isBusy) {
-          bubbleText = emp.current_task ? emp.current_task.title.slice(0, 14) + "..." : "Working";
-          bubbleIcon = "💬";
+          const task = emp.current_task;
+          const source = task && task.source ? task.source.toLowerCase() : "";
+          if (source === "hermes") {
+            bubbleIcon = "⚡";
+            sourceClass = "source-hermes";
+            sourceTag = "HERMES";
+          } else if (source === "antigravity") {
+            bubbleIcon = "🌌";
+            sourceClass = "source-antigravity";
+            sourceTag = "ANTIGRAVITY";
+          } else if (source === "vscode") {
+            bubbleIcon = "💻";
+            sourceClass = "source-vscode";
+            sourceTag = "VS CODE";
+          } else if (source === "cron") {
+            bubbleIcon = "⏰";
+            sourceClass = "source-cron";
+            sourceTag = "CRON";
+          } else if (source) {
+            bubbleIcon = "🛰️";
+            sourceClass = "source-custom";
+            sourceTag = source.toUpperCase();
+          } else {
+            bubbleIcon = "💬";
+            sourceClass = "source-default";
+          }
+
+          const rawText = task ? (task.raw_title || task.title || "Working") : "Working";
+          bubbleText = rawText.length > 16 ? rawText.slice(0, 14) + "..." : rawText;
         } else if (isOffline) {
           bubbleText = "Offline";
           bubbleIcon = "💤";
         }
 
         const workstation = document.createElement("div");
-        workstation.className = "workstation";
+        workstation.className = `workstation ${sourceClass ? "active-task " + sourceClass : ""}`;
         workstation.dataset.empId = emp.id;
 
         // Custom avatar path or fallback to procedural SVG
         const customAvatarSrc = `/static/assets/custom/avatars/${emp.id}.png`;
         const avatarSvg = generatePixelAvatarSVG(emp.name, emp.role_id, emp.department_id);
 
+        const badgeHtml = sourceTag ? `<span class="workstation-source-badge ${sourceClass}">${sourceTag}</span>` : "";
+
         workstation.innerHTML = `
-          <div class="status-bubble">
+          <div class="status-bubble ${sourceClass}">
             <span>${bubbleIcon}</span>
             <span>${bubbleText}</span>
           </div>
@@ -527,8 +586,9 @@ class AetherGameDashboard {
             ${avatarSvg}
           </div>
           <div class="desk-monitor">
-            <div class="screen-light ${isBusy ? "active" : isOffline ? "offline" : "idle"}"></div>
+            <div class="screen-light ${isBusy ? "active " + sourceClass : isOffline ? "offline" : "idle"}"></div>
           </div>
+          ${badgeHtml}
           <div class="emp-name" title="${emp.name}">${emp.name}</div>
           <div class="emp-role" title="${emp.rpg_class}">${emp.rpg_class}</div>
         `;
@@ -562,8 +622,157 @@ class AetherGameDashboard {
 
     if (this.activeTab === "quests") {
       this.renderQuestsList();
+    } else if (this.activeTab === "cron") {
+      this.renderCronList();
     } else {
       this.renderLogsList();
+    }
+  }
+
+  renderCronList() {
+    const cronJobs = this.state.cron_jobs || [];
+    const telemetry = this.state.telemetry_activities || [];
+
+    let html = `
+      <div class="cron-section-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-family: var(--font-retro); font-size: 0.65rem; color: #a855f7;">⏰ BACKGROUND CRONS</span>
+          <span style="font-size: 0.7rem; color: var(--hud-muted);">${cronJobs.filter((j) => j.enabled).length} Enabled</span>
+        </div>
+      </div>
+    `;
+
+    if (cronJobs.length === 0) {
+      html += `<div style="color: var(--hud-muted); padding: 10px; font-size: 0.75rem;">No background cron jobs registered.</div>`;
+    } else {
+      cronJobs.forEach((job) => {
+        const isRunning = job.status === "RUNNING";
+        const isFailed = job.status === "FAILED";
+        const isSuccess = job.status === "SUCCESS";
+        const statusColor = isRunning ? "#f59e0b" : isFailed ? "#ef4444" : isSuccess ? "#10b981" : "#94a3b8";
+        const statusBadge = `<span class="cron-status-badge" style="background: ${statusColor}22; color: ${statusColor}; border: 1px solid ${statusColor}55;">${job.status}</span>`;
+        const nextRunIn = Math.max(0, Math.round(job.next_run_in || 0));
+        const lastRunText = job.last_run ? new Date(job.last_run).toLocaleTimeString() : "Never";
+
+        html += `
+          <div class="cron-card ${!job.enabled ? 'disabled-job' : ''}">
+            <div class="cron-card-header">
+              <div>
+                <span class="cron-job-name">${job.name}</span>
+                <span class="cron-role-tag">${job.target_role || 'Agent'}</span>
+              </div>
+              ${statusBadge}
+            </div>
+            <div class="cron-card-desc">${job.description || ''}</div>
+            <div class="cron-card-meta">
+              <span>⏱ Every ${job.interval_seconds}s</span>
+              <span>⏳ Next in ${nextRunIn}s</span>
+              <span>🕒 Last: ${lastRunText}</span>
+            </div>
+            ${job.last_result ? `<div class="cron-last-result" title="${job.last_result}">${job.last_result.slice(0, 75)}${job.last_result.length > 75 ? '...' : ''}</div>` : ''}
+            <div class="cron-actions">
+              <button class="retro-btn primary btn-run-cron" data-job-id="${job.id}" ${isRunning ? 'disabled' : ''}>
+                ${isRunning ? '⏳ RUNNING...' : '▶ RUN NOW'}
+              </button>
+              <button class="retro-btn secondary btn-toggle-cron" data-job-id="${job.id}">
+                ${job.enabled ? '⏸ PAUSE' : '▶ ENABLE'}
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // Telemetry Feed Section
+    html += `
+      <div class="cron-section-header" style="margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-family: var(--font-retro); font-size: 0.65rem; color: #38bdf8;">📡 AI AGENT TELEMETRY</span>
+          <span style="font-size: 0.7rem; color: var(--hud-muted);">Live Hub</span>
+        </div>
+        <p style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 8px;">Real AI activities streamed from Hermes, Antigravity, VS Code & Crons.</p>
+      </div>
+    `;
+
+    if (telemetry.length === 0) {
+      html += `
+        <div style="background: #090d18; border: 1px dashed var(--border-color); border-radius: 6px; padding: 14px; text-align: center; color: var(--hud-muted); font-size: 0.75rem;">
+          <div style="font-size: 1.2rem; margin-bottom: 4px;">🛰️</div>
+          <div>Awaiting agent telemetry broadcast...</div>
+          <div style="margin-top: 6px; font-size: 0.65rem; color: #64748b; font-family: var(--font-mono);">aether track --role developer "Task Name"</div>
+        </div>
+      `;
+    } else {
+      telemetry.forEach((act) => {
+        const isWorking = act.status === "WORKING";
+        const isCompleted = act.status === "COMPLETED";
+        const isFailed = act.status === "FAILED";
+        const statusColor = isWorking ? "#38bdf8" : isCompleted ? "#10b981" : "#ef4444";
+        const source = (act.source || "agent").toLowerCase();
+        const time = act.created_at ? act.created_at.split("T")[1]?.slice(0, 8) : "--:--:--";
+
+        html += `
+          <div class="telemetry-card ${source}">
+            <div class="telemetry-header">
+              <div class="telemetry-source-tag ${source}">[${source.toUpperCase()}]</div>
+              <span class="telemetry-status" style="color: ${statusColor}; font-weight: bold; font-size: 0.65rem;">${act.status}</span>
+            </div>
+            <div class="telemetry-task-title">${act.task_title || act.task_name || 'Active Task'}</div>
+            <div class="telemetry-meta">
+              <span>👤 ${act.role || act.role_hint || 'agent'} (${act.employee_name || act.employee_id || act.assigned_employee_id || 'unassigned'})</span>
+              <span>🕒 ${time}</span>
+            </div>
+            ${(act.details || act.output) ? `<div class="telemetry-output">${(act.details || act.output).slice(0, 100)}${(act.details || act.output).length > 100 ? '...' : ''}</div>` : ''}
+          </div>
+        `;
+      });
+    }
+
+    this.elSidebarContent.innerHTML = html;
+
+    // Attach click handlers
+    this.elSidebarContent.querySelectorAll(".btn-run-cron").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const jobId = btn.dataset.jobId;
+        if (jobId) this.runCronJob(jobId);
+      });
+    });
+
+    this.elSidebarContent.querySelectorAll(".btn-toggle-cron").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const jobId = btn.dataset.jobId;
+        if (jobId) this.toggleCronJob(jobId);
+      });
+    });
+  }
+
+  async runCronJob(jobId) {
+    try {
+      sfx.playClick();
+      const btn = this.elSidebarContent.querySelector(`.btn-run-cron[data-job-id="${jobId}"]`);
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ STARTING...";
+      }
+      const res = await fetch(`/api/cron/jobs/${jobId}/run`, { method: "POST" });
+      const data = await res.json();
+      sfx.playChime();
+      await this.fetchState();
+    } catch (err) {
+      console.error("Failed to run cron job:", err);
+    }
+  }
+
+  async toggleCronJob(jobId) {
+    try {
+      sfx.playClick();
+      const res = await fetch(`/api/cron/jobs/${jobId}/toggle`, { method: "POST" });
+      const data = await res.json();
+      await this.fetchState();
+    } catch (err) {
+      console.error("Failed to toggle cron job:", err);
     }
   }
 
@@ -591,10 +800,14 @@ class AetherGameDashboard {
       if (obj.milestones && obj.milestones.length > 0) {
         milestoneHtml = `
           <div class="milestones-pipeline" title="Milestones: ${obj.completed_milestones}/${obj.total_milestones} Done">
-            ${obj.milestones.map((m) => `<div class="milestone-step ${m.status === 'COMPLETED' ? 'done' : ''}"></div>`).join("")}
+            ${obj.milestones.map((m) => `<div class="milestone-step ${m.status === 'COMPLETED' ? 'done' : m.status === 'IN_PROGRESS' ? 'active' : ''}" title="${m.title} [${m.status}]"></div>`).join("")}
           </div>
         `;
       }
+
+      const isCompleted = obj.status === "COMPLETED";
+      const btnLabel = isCompleted ? "✅ COMPLETED" : "⚡ EXECUTE STEP";
+      const btnDisabled = isCompleted ? "disabled" : "";
 
       card.innerHTML = `
         <div class="quest-header">
@@ -608,16 +821,18 @@ class AetherGameDashboard {
         </div>
         ${milestoneHtml}
         <div style="display: flex; justify-content: flex-end; margin-top: 6px;">
-          <button class="retro-btn primary btn-run-quest" data-obj-id="${obj.id}" style="padding: 4px 8px; font-size: 0.55rem;">
-            ⚡ EXECUTE STEP
+          <button class="retro-btn primary btn-run-quest" data-obj-id="${obj.id}" ${btnDisabled} style="padding: 4px 8px; font-size: 0.55rem; ${isCompleted ? 'opacity: 0.7; cursor: default; background: #065f46;' : ''}">
+            ${btnLabel}
           </button>
         </div>
       `;
 
-      card.querySelector(".btn-run-quest").addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.runObjectiveStep(obj.id);
-      });
+      if (!isCompleted) {
+        card.querySelector(".btn-run-quest").addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.runObjectiveStep(obj.id);
+        });
+      }
 
       this.elSidebarContent.appendChild(card);
     });

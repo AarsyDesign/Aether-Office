@@ -578,8 +578,13 @@ body {
 }
 
 .status-completed { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #059669; }
+.status-executing { background: rgba(59, 130, 246, 0.25); color: #38bdf8; border: 1px solid #0284c7; }
 .status-in-progress { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #2563eb; }
+.status-ready { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #d97706; }
 .status-planned { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #d97706; }
+.status-evaluating { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #9333ea; }
+.status-failed { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #dc2626; }
+.status-cancelled { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid #475569; }
 
 .quest-meta {
   display: flex;
@@ -615,6 +620,18 @@ body {
   background: #10b981;
   border-color: #34d399;
   box-shadow: 0 0 4px #10b981;
+}
+
+.milestone-step.active {
+  background: #38bdf8;
+  border-color: #0284c7;
+  box-shadow: 0 0 6px #38bdf8;
+  animation: pulse-milestone 1.2s infinite alternate;
+}
+
+@keyframes pulse-milestone {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 /* ==========================================================================
@@ -812,3 +829,208 @@ body {
   border-color: #38bdf8;
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
 }
+
+/* ==========================================================================
+   AI AGENT TELEMETRY & CRON ENGINE VISUALS
+   ========================================================================== */
+.workstation-source-badge {
+  font-family: var(--font-retro);
+  font-size: 0.45rem;
+  padding: 2px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  display: inline-block;
+}
+.workstation-source-badge.source-hermes {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+}
+.workstation-source-badge.source-antigravity {
+  background: rgba(6, 182, 212, 0.2);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.3);
+}
+.workstation-source-badge.source-vscode {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.3);
+}
+.workstation-source-badge.source-cron {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
+}
+
+/* Screen lights */
+.screen-light.source-hermes {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b, 0 0 20px rgba(245, 158, 11, 0.4);
+}
+.screen-light.source-antigravity {
+  background: #06b6d4;
+  box-shadow: 0 0 10px #06b6d4, 0 0 20px rgba(6, 182, 212, 0.4);
+}
+.screen-light.source-vscode {
+  background: #3b82f6;
+  box-shadow: 0 0 10px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.4);
+}
+.screen-light.source-cron {
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981, 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Status bubble for sources */
+.status-bubble.source-hermes {
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+.status-bubble.source-antigravity {
+  border-color: #06b6d4;
+  color: #22d3ee;
+}
+.status-bubble.source-vscode {
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+.status-bubble.source-cron {
+  border-color: #10b981;
+  color: #34d399;
+}
+
+/* Cron card */
+.cron-card {
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  transition: all 0.2s ease;
+}
+.cron-card:hover {
+  border-color: #a855f7;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
+}
+.cron-card.disabled-job {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+.cron-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.cron-job-name {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #f8fafc;
+  display: block;
+}
+.cron-role-tag {
+  font-size: 0.65rem;
+  color: #a855f7;
+  font-family: var(--font-mono);
+}
+.cron-status-badge {
+  font-family: var(--font-retro);
+  font-size: 0.5rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.cron-card-desc {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-bottom: 6px;
+}
+.cron-card-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.65rem;
+  color: #64748b;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+.cron-last-result {
+  background: #090d18;
+  border-left: 2px solid #38bdf8;
+  padding: 4px 6px;
+  font-size: 0.65rem;
+  color: #cbd5e1;
+  font-family: var(--font-mono);
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.cron-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.cron-actions .retro-btn {
+  padding: 3px 8px;
+  font-size: 0.55rem;
+}
+
+/* Telemetry card */
+.telemetry-card {
+  background: #090d18;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+.telemetry-card.hermes { border-left: 3px solid #f59e0b; }
+.telemetry-card.antigravity { border-left: 3px solid #06b6d4; }
+.telemetry-card.vscode { border-left: 3px solid #3b82f6; }
+.telemetry-card.cron { border-left: 3px solid #10b981; }
+
+.telemetry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.telemetry-source-tag {
+  font-family: var(--font-retro);
+  font-size: 0.55rem;
+}
+.telemetry-source-tag.hermes { color: #f59e0b; }
+.telemetry-source-tag.antigravity { color: #06b6d4; }
+.telemetry-source-tag.vscode { color: #3b82f6; }
+.telemetry-source-tag.cron { color: #10b981; }
+
+.telemetry-task-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 3px;
+}
+.telemetry-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: #64748b;
+  font-family: var(--font-mono);
+}
+.telemetry-output {
+  margin-top: 4px;
+  background: #050811;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+

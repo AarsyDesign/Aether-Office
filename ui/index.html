@@ -70,6 +70,14 @@
         </div>
 
         <div class="gauge-item">
+          <div class="gauge-icon">⏰</div>
+          <div class="gauge-data">
+            <span class="gauge-label">Cron Jobs</span>
+            <span class="gauge-val purple" id="hud-crons">0 Active</span>
+          </div>
+        </div>
+
+        <div class="gauge-item">
           <div class="gauge-icon">❤️</div>
           <div class="gauge-data">
             <span class="gauge-label">Health</span>
@@ -109,11 +117,12 @@
         </div>
       </section>
 
-      <!-- Sidebar: Quests & Logs -->
+      <!-- Sidebar: Quests, Cron Jobs, & Logs -->
       <aside class="game-sidebar">
         <div class="sidebar-tabs">
           <button class="tab-btn active" id="tab-quests">🎯 QUESTS</button>
-          <button class="tab-btn" id="tab-logs">📜 LIVE LOGS</button>
+          <button class="tab-btn" id="tab-cron">⏰ CRON & AGENTS</button>
+          <button class="tab-btn" id="tab-logs">📜 LOGS</button>
         </div>
         <div class="sidebar-content" id="sidebar-content">
           <!-- Dynamically populated by app.js -->
