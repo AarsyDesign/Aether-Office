@@ -979,21 +979,32 @@ def start_dashboard(
     """Launch the dashboard web server."""
     if not HAS_UI_DEPS:
         from pathlib import Path
+        import subprocess
+        import shutil
+
         venv_python = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
         if venv_python.exists() and sys.executable.lower() != str(venv_python.resolve()).lower():
-            import subprocess
             res = subprocess.run([str(venv_python), str(Path(__file__).resolve())] + sys.argv[1:])
             sys.exit(res.returncode)
 
-        _safe_print("\n" + "=" * 65)
-        _safe_print("[!] DASHBOARD DEPENDENCY MISSING")
-        _safe_print("    FastAPI and Uvicorn are required to launch the game dashboard.")
-        _safe_print("    Please run one of the following commands in your terminal:")
-        _safe_print("        .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
-        _safe_print("    or directly run with the project virtual environment:")
-        _safe_print("        .\\.venv\\Scripts\\python.exe dashboard.py")
-        _safe_print("=" * 65 + "\n")
-        sys.exit(1)
+        _safe_print("[*] Menyiapkan modul dashboard (FastAPI & Uvicorn)...")
+        installed = False
+        if shutil.which("uv"):
+            res = subprocess.run(["uv", "pip", "install", "fastapi", "uvicorn"])
+            if res.returncode == 0:
+                installed = True
+        if not installed:
+            res = subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn"])
+            if res.returncode == 0:
+                installed = True
+
+        if not installed:
+            _safe_print("\n" + "=" * 65)
+            _safe_print("[!] DASHBOARD DEPENDENCY MISSING")
+            _safe_print("    FastAPI and Uvicorn are required to launch the game dashboard.")
+            _safe_print("    Please run: .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
+            _safe_print("=" * 65 + "\n")
+            sys.exit(1)
 
     hub = OfficeDashboardHub(config_path=config_path)
     app = create_app(hub)

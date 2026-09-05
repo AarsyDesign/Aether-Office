@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Autonomous Multi-Agent AI Office & 2D Pixel Art Canvas Simulator",
   "scripts": {
-    "setup": "python -m venv .venv && .\\.venv\\Scripts\\python.exe -m pip install -e \".[ui]\"",
-    "start": ".\\.venv\\Scripts\\python.exe cli.py dashboard",
-    "dev": ".\\.venv\\Scripts\\python.exe cli.py dashboard",
+    "setup": "uv venv --python 3.11 --clear && uv pip install -e \".[ui]\" httpx httpx2 pytest pytest-cov pytest-asyncio || python -m venv .venv && .\\.venv\\Scripts\\python.exe -m pip install -e \".[ui]\" httpx httpx2 pytest pytest-cov pytest-asyncio",
+    "start": "node -e \"const fs=require('fs'); if(!fs.existsSync('.venv/Scripts/python.exe')){console.log('[*] Setting up environment with Python 3.11...'); require('child_process').execSync('npm run setup', {stdio:'inherit'});}\" && .\\.venv\\Scripts\\python.exe cli.py dashboard",
+    "dev": "node -e \"const fs=require('fs'); if(!fs.existsSync('.venv/Scripts/python.exe')){console.log('[*] Setting up environment with Python 3.11...'); require('child_process').execSync('npm run setup', {stdio:'inherit'});}\" && .\\.venv\\Scripts\\python.exe cli.py dashboard",
     "test": ".\\.venv\\Scripts\\python.exe -m pytest",
     "employees": ".\\.venv\\Scripts\\python.exe cli.py employees",
     "build-demo": ".\\.venv\\Scripts\\python.exe cli.py run \"FastAPI Todo API\" --mock"

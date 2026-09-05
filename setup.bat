@@ -7,25 +7,18 @@ echo   Aether Office - One-Click Environment Setup
 echo ===================================================
 echo.
 
-if not exist ".venv\Scripts\python.exe" (
-    echo [*] Creating virtual environment (.venv)...
-    python -m venv .venv
-    if errorlevel 1 (
-        echo [ERROR] Failed to create .venv. Ensure Python 3.10+ is installed and in PATH.
-        pause
-        exit /b 1
+where uv >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [*] Using uv with Python 3.11 for ultra-fast, stable setup...
+    uv venv --python 3.11 --clear
+    uv pip install -e ".[ui]" httpx httpx2 pytest pytest-cov pytest-asyncio
+) else (
+    echo [*] Setting up standard virtual environment...
+    if not exist ".venv\Scripts\python.exe" (
+        python -m venv .venv
     )
-)
-
-echo [*] Upgrading pip...
-".venv\Scripts\python.exe" -m pip install --upgrade pip
-
-echo [*] Installing dependencies and UI extensions...
-".venv\Scripts\python.exe" -m pip install -e ".[ui]"
-if errorlevel 1 (
-    echo [ERROR] Failed to install dependencies.
-    pause
-    exit /b 1
+    ".venv\Scripts\python.exe" -m pip install --upgrade pip
+    ".venv\Scripts\python.exe" -m pip install -e ".[ui]" httpx httpx2 pytest pytest-cov pytest-asyncio
 )
 
 echo.

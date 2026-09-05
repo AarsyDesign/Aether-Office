@@ -319,27 +319,47 @@ def cmd_track(args):
 
 def cmd_dashboard(args):
     """Launch the interactive game dashboard."""
+    from pathlib import Path
+    import subprocess
+    import shutil
+
+    # 1. Always prefer the project's virtual environment (.venv) if available
+    venv_python = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
+    if venv_python.exists() and sys.executable.lower() != str(venv_python.resolve()).lower():
+        res = subprocess.run([str(venv_python), str(Path(__file__).resolve())] + sys.argv[1:])
+        sys.exit(res.returncode)
+
+    # 2. Try importing fastapi & uvicorn; if missing or incompatible, auto-install them!
     try:
         import fastapi
         import uvicorn
-    except ImportError:
-        # Auto-fallback: check if local .venv exists with installed dependencies
-        from pathlib import Path
-        venv_python = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
-        if venv_python.exists() and sys.executable.lower() != str(venv_python.resolve()).lower():
-            import subprocess
-            res = subprocess.run([str(venv_python), str(Path(__file__).resolve())] + sys.argv[1:])
-            sys.exit(res.returncode)
+    except (ImportError, Exception):
+        print("\n[*] Menyiapkan modul dashboard (FastAPI & Uvicorn)...")
+        installed = False
+        if shutil.which("uv"):
+            res = subprocess.run(["uv", "pip", "install", "fastapi", "uvicorn"])
+            if res.returncode == 0:
+                installed = True
+        if not installed:
+            res = subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn"])
+            if res.returncode == 0:
+                installed = True
 
-        print("\n" + "=" * 65)
-        print("❌ DASHBOARD DEPENDENCY MISSING")
-        print("   FastAPI dan Uvicorn dibutuhkan untuk menjalankan game dashboard.")
-        print("   Silakan jalankan perintah instalasi berikut di terminal:")
-        print("       .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
-        print("   atau jalankan langsung menggunakan virtual environment:")
-        print("       .\\.venv\\Scripts\\python.exe cli.py dashboard")
-        print("=" * 65 + "\n")
-        sys.exit(1)
+        if installed:
+            print("[✓] Modul dashboard berhasil dipasang. Menjalankan server...\n")
+            try:
+                import fastapi
+                import uvicorn
+            except Exception as e2:
+                print(f"[!] Gagal memuat dependensi: {e2}")
+                sys.exit(1)
+        else:
+            print("\n" + "=" * 65)
+            print("❌ GAGAL MEMASANG DEPENDENSI DASHBOARD")
+            print("   Silakan jalankan perintah instalasi berikut di terminal:")
+            print("       .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
+            print("=" * 65 + "\n")
+            sys.exit(1)
 
     from dashboard import start_dashboard
     start_dashboard(
