@@ -51,9 +51,9 @@ dev = [
 aether = "cli:main"
 
 [project.urls]
-Homepage = "https://github.com/your-username/aether-office"
-Repository = "https://github.com/your-username/aether-office.git"
-Issues = "https://github.com/your-username/aether-office/issues"
+Homepage = "https://github.com/AarsyDesign/Aether-Office"
+Repository = "https://github.com/AarsyDesign/Aether-Office.git"
+Issues = "https://github.com/AarsyDesign/Aether-Office/issues"
 
 [tool.setuptools]
 py-modules = [

@@ -3,11 +3,11 @@
 # 🏢 AETHER OFFICE
 ### Autonomous Multi-Agent AI Office & Adaptive Planning Engine
 
-[![CI](https://github.com/your-username/aether-office/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/aether-office/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-235%20passed%20%2F%200%20failed-brightgreen.svg)](https://github.com/your-username/aether-office)
+[![CI](https://github.com/AarsyDesign/Aether-Office/actions/workflows/ci.yml/badge.svg)](https://github.com/AarsyDesign/Aether-Office/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-235%20passed%20%2F%200%20failed-brightgreen.svg)](https://github.com/AarsyDesign/Aether-Office)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Architecture: Phase 9 Complete](https://img.shields.io/badge/Architecture-Phase%209%20Adaptive%20Intelligence-purple.svg)](PHASE_9.md)
+[![Architecture: Phase 9 Complete](https://img.shields.io/badge/Architecture-Phase%209%20Adaptive%20Intelligence-purple.svg)](docs/phases/PHASE_9.md)
 
 *Transform high-level human objectives into fully executed, verified outcomes through a persistent virtual AI organization.*
 
@@ -111,8 +111,8 @@ Milestones are validated incrementally during runtime. If deliverables fail mile
 Clone the repository and install with `uv` (recommended) or `pip`:
 
 ```bash
-git clone https://github.com/your-username/aether-office.git
-cd aether-office
+git clone https://github.com/AarsyDesign/Aether-Office.git
+cd Aether-Office
 
 # Using uv
 uv venv
@@ -215,6 +215,9 @@ pytest test_runtime.py -v
 
 ```text
 aether-office/
+├── docs/                   # Architectural specs & design records
+│   ├── phases/             # Detailed engineering specs (Phase 1 - Phase 9)
+│   └── specs/              # PRD and core conceptual designs
 ├── adaptive_planner.py     # Adaptive planning orchestrator & safe LLM boundary
 ├── analysis.py             # ObjectiveAnalyzer, domain classifier & ambiguity gate
 ├── strategies.py           # 6 domain strategies (Software, Research, Marketing, etc.)
@@ -240,19 +243,21 @@ aether-office/
 
 ---
 
-## 🗺️ Architectural Roadmap
+## 🗺️ Architectural Roadmap & Specifications
 
-- [x] **Phase 1 — Foundation**: Core pipeline, LLM wrapper, SQLite audit trail.
-- [x] **Phase 1.5 — Reliability**: Retry policies, error categorizer, syntax verification.
-- [x] **Phase 2 — Chunked Developer**: Context-aware modular code synthesis.
-- [x] **Phase 3 — Streaming & EventBus**: Real-time event streaming, event replay, agent state tracking.
-- [x] **Phase 4 — Organization & Workforce**: 8 Departments, 37 Seed Roles, Indonesian workforce pool.
-- [x] **Phase 5 — Dynamic Team Collaboration**: Delegation engine, handoffs, peer reviews, discussions.
-- [x] **Phase 6 — Multi-Project Scheduler**: Concurrency control, priority queues, resource safety.
-- [x] **Phase 6.5 — Hardening Audit**: Idempotency checks, transaction integrity, crash resilience.
-- [x] **Phase 7 — Persistent Runtime Engine**: Worker threads, heartbeat ticks, graceful shutdown.
-- [x] **Phase 8 — Objective-to-Outcome Engine**: Declarative objectives, outcome verification, auto-revisions.
-- [x] **Phase 9 — Adaptive Planning & Intelligence**: Multi-domain strategies, ambiguity gate, risk analyzer, quality scoring, milestone gating.
+Explore the detailed architecture and evolutionary engineering specifications:
+
+- [x] **[Phase 1 — Foundation](docs/phases/PHASE_1.md)**: Core pipeline, LLM wrapper, SQLite audit trail.
+- [x] **[Phase 1.5 — Reliability](docs/phases/PHASE_1_5.md)**: Retry policies, error categorizer, syntax verification.
+- [x] **[Phase 2 — Chunked Developer](docs/phases/PHASE_2.md)**: Context-aware modular code synthesis.
+- [x] **[Phase 3 — Streaming & EventBus](docs/phases/PHASE_3.md)**: Real-time event streaming, event replay, agent state tracking.
+- [x] **[Phase 4 — Organization & Workforce](docs/phases/PHASE_4.md)**: 8 Departments, 37 Seed Roles, Indonesian workforce pool.
+- [x] **[Phase 5 — Dynamic Team Collaboration](docs/phases/PHASE_5.md)**: Delegation engine, handoffs, peer reviews, discussions.
+- [x] **[Phase 6 — Multi-Project Scheduler](docs/phases/PHASE_6.md)**: Concurrency control, priority queues, resource safety.
+- [x] **[Phase 6.5 — Hardening Audit](docs/phases/PHASE_6_5_AUDIT.md)**: Idempotency checks, transaction integrity, crash resilience.
+- [x] **[Phase 7 — Persistent Runtime Engine](docs/phases/PHASE_7.md)**: Worker threads, heartbeat ticks, graceful shutdown.
+- [x] **[Phase 8 — Objective-to-Outcome Engine](docs/phases/PHASE_8.md)**: Declarative objectives, outcome verification, auto-revisions.
+- [x] **[Phase 9 — Adaptive Planning & Intelligence](docs/phases/PHASE_9.md)**: Multi-domain strategies, ambiguity gate, risk analyzer, quality scoring, milestone gating.
 
 ---
 
