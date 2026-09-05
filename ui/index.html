@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether Office — Virtual Office Tycoon Dashboard</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Press+Start+2P&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Game Stylesheet -->
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>🏢</text></svg>">
+</head>
+<body>
+  <!-- Authentic CRT Scanlines Overlay -->
+  <div class="crt-overlay"></div>
+
+  <div class="game-container">
+    <!-- =====================================================================
+         TOP HUD (HEADS-UP DISPLAY)
+         ===================================================================== -->
+    <header class="game-hud">
+      <!-- Company Branding -->
+      <div class="hud-branding">
+        <div class="brand-icon">🏢</div>
+        <div>
+          <div class="brand-title">AETHER OFFICE</div>
+          <div class="brand-badge">
+            <span class="pulsing-dot"></span>
+            <span>SIMULATION ACTIVE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Operational Gauges -->
+      <div class="hud-gauges">
+        <div class="gauge-item">
+          <div class="gauge-icon">⏱️</div>
+          <div class="gauge-data">
+            <span class="gauge-label">Scheduler</span>
+            <span class="gauge-val blue" id="hud-cycle">CYCLE #0000</span>
+          </div>
+        </div>
+
+        <div class="gauge-item">
+          <div class="gauge-icon">💰</div>
+          <div class="gauge-data">
+            <span class="gauge-label">Treasury</span>
+            <span class="gauge-val gold" id="hud-treasury">$50,000.00</span>
+          </div>
+        </div>
+
+        <div class="gauge-item">
+          <div class="gauge-icon">👥</div>
+          <div class="gauge-data">
+            <span class="gauge-label">Workforce</span>
+            <span class="gauge-val green" id="hud-staff">37 (37 Avail / 0 Busy)</span>
+          </div>
+        </div>
+
+        <div class="gauge-item">
+          <div class="gauge-icon">🎯</div>
+          <div class="gauge-data">
+            <span class="gauge-label">Campaigns</span>
+            <span class="gauge-val cyan" id="hud-quests">0 Active / 0 Done</span>
+          </div>
+        </div>
+
+        <div class="gauge-item">
+          <div class="gauge-icon">❤️</div>
+          <div class="gauge-data">
+            <span class="gauge-label">Health</span>
+            <span class="gauge-val green" id="hud-health">99.4%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action & Retro Controls -->
+      <div class="hud-controls">
+        <button class="retro-btn primary" id="btn-step-tick" title="Step one scheduler cycle">
+          ⏩ STEP TICK
+        </button>
+        <button class="retro-btn" id="btn-auto-tick" title="Toggle automatic ticks">
+          ▶️ AUTO: OFF
+        </button>
+        <button class="retro-btn action" id="btn-new-quest" title="Create a new objective">
+          + NEW QUEST
+        </button>
+        <button class="retro-btn" id="btn-sfx-toggle" title="Toggle 8-bit sound effects">
+          🔊 SFX: ON
+        </button>
+        <button class="retro-btn" id="btn-crt-toggle" title="Toggle retro scanlines">
+          📺 CRT: ON
+        </button>
+      </div>
+    </header>
+
+    <!-- =====================================================================
+         MAIN VIEWPORT: FLOOR PLAN & CAMPAIGN SIDEBAR
+         ===================================================================== -->
+    <main class="game-viewport">
+      <!-- 8-Room Interactive Office Floor -->
+      <section class="office-floor" id="office-floor">
+        <div class="floor-grid" id="floor-grid">
+          <!-- Dynamically populated by app.js -->
+        </div>
+      </section>
+
+      <!-- Sidebar: Quests & Logs -->
+      <aside class="game-sidebar">
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" id="tab-quests">🎯 QUESTS</button>
+          <button class="tab-btn" id="tab-logs">📜 LIVE LOGS</button>
+        </div>
+        <div class="sidebar-content" id="sidebar-content">
+          <!-- Dynamically populated by app.js -->
+        </div>
+      </aside>
+    </main>
+
+    <!-- =====================================================================
+         BOTTOM NEWS TICKER
+         ===================================================================== -->
+    <footer class="game-ticker">
+      <div class="ticker-label">NEWS FLASH</div>
+      <div class="ticker-marquee">
+        <span class="ticker-text" id="ticker-text">
+          ✦ Welcome to Aether Office Virtual Headquarters! Autonomous multi-agent simulation ready. Click any employee workstation to inspect character sheet.
+        </span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- =====================================================================
+       MODAL: EMPLOYEE CHARACTER DOSSIER
+       ===================================================================== -->
+  <div class="modal-overlay hidden" id="modal-dossier">
+    <div class="retro-modal">
+      <div class="modal-header">
+        <span class="modal-title">EMPLOYEE CHARACTER SHEET</span>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="dossier-header">
+          <div class="dossier-avatar" id="dossier-avatar">
+            <!-- Pixel Avatar SVG or Custom Image -->
+          </div>
+          <div class="dossier-identity">
+            <h2 id="dossier-name">Alex Reed</h2>
+            <p id="dossier-title">Senior Backend Engineer</p>
+            <span class="tag-badge" id="dossier-dept">ENGINEERING</span>
+          </div>
+        </div>
+
+        <div class="rpg-stats">
+          <div class="stat-item">
+            <span>Experience Level:</span>
+            <span class="stat-val" id="stat-level">Lv. 5</span>
+          </div>
+          <div class="stat-item">
+            <span>Availability:</span>
+            <span class="stat-val" id="stat-status">AVAILABLE</span>
+          </div>
+          <div class="stat-item" style="grid-column: span 2;">
+            <span>Current Assignment:</span>
+            <span class="stat-val" id="stat-task">None (Standby)</span>
+          </div>
+          <div class="stat-item" style="grid-column: span 2;">
+            <span>Capabilities:</span>
+            <span class="stat-val" id="stat-caps">python, fastapi, docker</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       MODAL: NEW QUEST / OBJECTIVE FORM
+       ===================================================================== -->
+  <div class="modal-overlay hidden" id="modal-new-quest">
+    <div class="retro-modal">
+      <div class="modal-header">
+        <span class="modal-title">LAUNCH NEW BUSINESS CAMPAIGN</span>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="form-new-quest">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="quest-title">Objective Title *</label>
+            <input type="text" id="quest-title" class="retro-input" placeholder="e.g. Build High-Converting SaaS Landing Page" required>
+          </div>
+
+          <div class="form-group">
+            <label for="quest-desc">Campaign Brief & Description</label>
+            <textarea id="quest-desc" class="retro-textarea" rows="3" placeholder="Explain the key outcome, target audience, and business requirements..."></textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="quest-budget">Budget ($)</label>
+              <input type="number" id="quest-budget" class="retro-input" value="1000" min="0" step="50">
+            </div>
+
+            <div class="form-group">
+              <label for="quest-priority">Priority Level</label>
+              <select id="quest-priority" class="retro-select">
+                <option value="NORMAL" selected>NORMAL</option>
+                <option value="HIGH">HIGH</option>
+                <option value="CRITICAL">CRITICAL</option>
+                <option value="LOW">LOW</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+            <button type="button" class="retro-btn modal-cancel">CANCEL</button>
+            <button type="submit" class="retro-btn action">🚀 LAUNCH QUEST</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Game Logic Script -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

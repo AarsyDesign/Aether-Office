@@ -4,7 +4,7 @@
 ### Autonomous Multi-Agent AI Office & Adaptive Planning Engine
 
 [![CI](https://github.com/AarsyDesign/Aether-Office/actions/workflows/ci.yml/badge.svg)](https://github.com/AarsyDesign/Aether-Office/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-235%20passed%20%2F%200%20failed-brightgreen.svg)](https://github.com/AarsyDesign/Aether-Office)
+[![Tests](https://img.shields.io/badge/tests-239%20passed%20%2F%200%20failed-brightgreen.svg)](https://github.com/AarsyDesign/Aether-Office)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Architecture: Phase 9 Complete](https://img.shields.io/badge/Architecture-Phase%209%20Adaptive%20Intelligence-purple.svg)](docs/phases/PHASE_9.md)
@@ -184,16 +184,60 @@ After installation, the `aether` executable is available globally:
 | `aether objective plan <id>` | **(Phase 9)** Formulate adaptive milestones, tasks, and critical path |
 | `aether objective risks <id>` | **(Phase 9)** Audit 7 categories of project risks |
 | `aether objective plan-quality <id>` | **(Phase 9)** Audit plan quality score (0–100) and DAG validity |
+| `aether dashboard` *(or `ui`)* | **(Game Dashboard)** Launch the interactive Virtual Office Tycoon game dashboard |
+
+---
+
+## 🎮 Virtual Office Game Dashboard
+
+Aether Office includes an optional, retro tycoon-style visual dashboard (inspired by *Game Dev Tycoon*, *Theme Hospital*, and *SimCity*).
+
+It visualizes the autonomous organization as a living, breathing virtual company:
+
+* **Interactive Floor Plan**: 8 distinct department suites (*Engineering, Product, Business, Design, Marketing, Research, Operations, Support*) with workstations, glowing monitor LEDs, and animated status bubbles (💬 Coding, 💡 Brainstorming, ☕ Coffee Break, 💤 Standby).
+* **RPG Character Sheets**: Click any employee workstation to inspect their full dossier: Level, Class (e.g. *Code Alchemist, Prompt Artisan*), capability badges, active task, and personality profile.
+* **Corporate Campaigns & Quests**: Track active business objectives, milestone gate progress, budget burn rates, and feasibility grades.
+* **8-Bit Audio Synthesizer**: Pure in-browser Web Audio API effects (coin chime on task completion, mechanical tick blip, fanfare on victory) with instant mute toggle. Zero external audio files required!
+* **CRT Arcade Scanlines**: Toggle authentic retro arcade scanline overlays.
+* **Decoupled Observer Pattern**: Reads from `OfficeOrchestrator` and `tasks.db` without altering scheduling integrity.
+
+### Installing & Running the Game Dashboard
+
+The UI is an **optional extension** to keep the core library ultra-lightweight:
+
+```bash
+# Install optional UI dependencies (FastAPI & Uvicorn)
+pip install "aether-office[ui]"
+
+# Launch the game dashboard (opens browser at http://127.0.0.1:8000)
+aether dashboard
+# or:
+python cli.py dashboard
+```
+
+### Custom Assets & Sprites Support
+
+Aether Office includes procedural SVG pixel art avatars that work out-of-the-box. If you want to use custom pixel art, custom sprites, or custom BGM, drop your files directly into:
+
+* `ui/assets/custom/avatars/<employee_id>.png` (e.g. `pm_001.png` or `default.png`)
+* `ui/assets/custom/rooms/` (custom floor/wall tiles)
+* `ui/assets/custom/logo/` (custom corporate logo)
+* `ui/assets/custom/audio/` (custom BGM / sound effects)
+
+See [ui/assets/custom/README.md](ui/assets/custom/README.md) for recommended resolutions and sprite sheet guides.
 
 ---
 
 ## 🧪 Testing & Verification
 
-Aether Office enforces a **Zero Regression Policy**. The test suite contains **235 rigorous unit, integration, and crash recovery tests**:
+Aether Office enforces a **Zero Regression Policy**. The test suite contains **239 rigorous unit, integration, and crash recovery tests**:
 
 ```bash
 # Run entire test suite
 pytest -v
+
+# Run Game Dashboard tests
+pytest test_dashboard.py -v
 
 # Run Phase 9 Adaptive Planning tests
 pytest test_adaptive_planning.py -v
@@ -206,7 +250,7 @@ pytest test_runtime.py -v
 ```
 
 ```text
-============================ 235 passed in 44.75s =============================
+============================ 239 passed in 40.36s =============================
 ```
 
 ---
@@ -218,6 +262,12 @@ aether-office/
 ├── docs/                   # Architectural specs & design records
 │   ├── phases/             # Detailed engineering specs (Phase 1 - Phase 9)
 │   └── specs/              # PRD and core conceptual designs
+├── ui/                     # Virtual Office Tycoon Game Dashboard (HTML5, CSS3, JS)
+│   ├── index.html          # Retro Tycoon HUD & 8-Room Floor Plan
+│   ├── style.css           # Pixel styling, glowing monitors, scanline shader
+│   ├── app.js              # Real-time SSE listener, procedural pixel avatars & 8-bit audio
+│   └── assets/custom/      # Custom pixel sprites & audio asset slot
+├── dashboard.py            # FastAPI dashboard server & SSE event streamer
 ├── adaptive_planner.py     # Adaptive planning orchestrator & safe LLM boundary
 ├── analysis.py             # ObjectiveAnalyzer, domain classifier & ambiguity gate
 ├── strategies.py           # 6 domain strategies (Software, Research, Marketing, etc.)

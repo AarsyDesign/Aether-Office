@@ -168,6 +168,13 @@ def main():
     obj_parser.add_argument("--ticks", type=int, default=30, help="Maksimum detak scheduler saat eksekusi")
     obj_parser.add_argument("--reason", default="Dibatalkan pengguna via CLI", help="Alasan pembatalan objektif")
 
+    # dashboard / ui command
+    dash_parser = sub.add_parser("dashboard", aliases=["ui"], help="Buka visual game dashboard interaktif Aether Office di browser")
+    dash_parser.add_argument("--host", default="127.0.0.1", help="Host server dashboard (default: 127.0.0.1)")
+    dash_parser.add_argument("--port", type=int, default=8000, help="Port server dashboard (default: 8000)")
+    dash_parser.add_argument("--no-browser", action="store_true", help="Jangan buka browser secara otomatis")
+    dash_parser.add_argument("--config", default="config.yaml", help="Path file konfigurasi")
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -230,8 +237,34 @@ def main():
         cmd_project_resume(args)
     elif args.command == "objective":
         cmd_objective(args)
+    elif args.command in ("dashboard", "ui"):
+        cmd_dashboard(args)
     else:
         parser.print_help()
+
+
+def cmd_dashboard(args):
+    """Launch the interactive game dashboard."""
+    try:
+        import fastapi
+        import uvicorn
+    except ImportError:
+        print("\n" + "=" * 65)
+        print("❌ DASHBOARD DEPENDENCY MISSING")
+        print("   FastAPI dan Uvicorn dibutuhkan untuk menjalankan game dashboard.")
+        print("   Silakan instal paket ekstensi UI:")
+        print("       pip install \"aether-office[ui]\"")
+        print("=" * 65 + "\n")
+        sys.exit(1)
+
+    from dashboard import start_dashboard
+    start_dashboard(
+        host=args.host,
+        port=args.port,
+        auto_open=not args.no_browser,
+        config_path=args.config,
+    )
+
 
 
 
