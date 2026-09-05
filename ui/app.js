@@ -170,6 +170,7 @@ class AetherGameDashboard {
     this.viewMode = "canvas";   // "canvas" | "grid"
 
     this.initElements();
+    this.initTheme();
     this.initPixelCanvasWorld();
     this.attachEventListeners();
     this.initSSE();
@@ -196,6 +197,7 @@ class AetherGameDashboard {
     this.btnAutoTick = document.getElementById("btn-auto-tick");
     this.btnSfxToggle = document.getElementById("btn-sfx-toggle");
     this.btnCrtToggle = document.getElementById("btn-crt-toggle");
+    this.btnThemeToggle = document.getElementById("btn-theme-toggle");
     this.crtOverlay = document.querySelector(".crt-overlay");
 
     // Viewport Containers
@@ -233,6 +235,28 @@ class AetherGameDashboard {
     this.testVerdictBadge = document.getElementById("test-verdict-badge");
   }
 
+  initTheme() {
+    const saved = localStorage.getItem("aether_theme") || "light";
+    this.setTheme(saved === "light");
+  }
+
+  setTheme(isLight) {
+    document.body.classList.toggle("theme-light", isLight);
+    document.documentElement.setAttribute("data-theme", isLight ? "light" : "dark");
+    localStorage.setItem("aether_theme", isLight ? "light" : "dark");
+
+    if (this.btnThemeToggle) {
+      this.btnThemeToggle.innerHTML = isLight ? "💡 LAMPU: NYALA" : "🌙 LAMPU: REDUP";
+      this.btnThemeToggle.classList.toggle("lamp-active", isLight);
+      this.btnThemeToggle.classList.toggle("lamp-off", !isLight);
+      this.btnThemeToggle.title = isLight ? "Matikan lampu kantor / Mode gelap" : "Nyalakan lampu kantor / Mode terang";
+    }
+
+    if (this.pixelWorld && typeof this.pixelWorld.setLightMode === "function") {
+      this.pixelWorld.setLightMode(isLight);
+    }
+  }
+
   initPixelCanvasWorld() {
     if (window.PixelOfficeWorld) {
       this.pixelWorld = new window.PixelOfficeWorld("pixel-canvas", {
@@ -240,6 +264,8 @@ class AetherGameDashboard {
         onSelectEmployee: (emp) => this.openDossier(emp),
         onSelectWhiteboard: () => this.openWhiteboardModal(),
       });
+      const isLight = document.body.classList.contains("theme-light");
+      this.pixelWorld.setLightMode(isLight);
     }
   }
 
@@ -296,6 +322,15 @@ class AetherGameDashboard {
       this.btnCrtToggle.textContent = isEnabled ? "📺 CRT: ON" : "📺 CRT: OFF";
       this.btnCrtToggle.classList.toggle("toggled-off", !isEnabled);
     });
+
+    // Lamp / Lighting Theme Toggle
+    if (this.btnThemeToggle) {
+      this.btnThemeToggle.addEventListener("click", () => {
+        sfx.playClick();
+        const isCurrentlyLight = document.body.classList.contains("theme-light");
+        this.setTheme(!isCurrentlyLight);
+      });
+    }
 
     // Sidebar Tabs Navigation
     this.tabProjects.addEventListener("click", () => {

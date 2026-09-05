@@ -25,10 +25,11 @@ class PixelOfficeWorld {
     this.onSelectWhiteboard = options.onSelectWhiteboard || null;
     this.sfx = options.sfx || null;
 
-    // Simulation state
+    // Simulation state & theme lighting
     this.state = null;
     this.time = 0;
     this.animFrame = null;
+    this.lightMode = (localStorage.getItem("aether_theme") || "light") === "light";
 
     // Office layout definitions
     this.rooms = this._initRoomLayout();
@@ -42,6 +43,10 @@ class PixelOfficeWorld {
 
     this._initEvents();
     this.startLoop();
+  }
+
+  setLightMode(isLight) {
+    this.lightMode = !!isLight;
   }
 
   // =========================================================================
@@ -388,8 +393,8 @@ class PixelOfficeWorld {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
-    // 1. Draw outer walls & floor background
-    ctx.fillStyle = "#090d16";
+    // 1. Draw outer walls & floor background (Daylight office or Dark retro)
+    ctx.fillStyle = this.lightMode ? "#cbd5e1" : "#090d16";
     ctx.fillRect(0, 0, this.width, this.height);
 
     // 2. Draw Rooms & Tiles
@@ -432,10 +437,10 @@ class PixelOfficeWorld {
 
     // Base floor
     if (room.floorType === "wood") {
-      ctx.fillStyle = "#1e1b18";
+      ctx.fillStyle = this.lightMode ? "#fde68a" : "#1e1b18";
       ctx.fillRect(room.x, room.y, room.w, room.h);
       // Wood planks
-      ctx.strokeStyle = "#292524";
+      ctx.strokeStyle = this.lightMode ? "#d97706" : "#292524";
       ctx.lineWidth = 1;
       for (let py = room.y; py < room.y + room.h; py += 16) {
         ctx.beginPath();
@@ -444,10 +449,10 @@ class PixelOfficeWorld {
         ctx.stroke();
       }
     } else if (room.floorType === "carpet_blue") {
-      ctx.fillStyle = "#0f172a";
+      ctx.fillStyle = this.lightMode ? "#bfdbfe" : "#0f172a";
       ctx.fillRect(room.x, room.y, room.w, room.h);
       // Subtle weave
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = this.lightMode ? "#93c5fd" : "#1e293b";
       for (let px = room.x; px < room.x + room.w; px += 24) {
         for (let py = room.y; py < room.y + room.h; py += 24) {
           ctx.fillRect(px + 4, py + 4, 2, 2);
@@ -458,23 +463,27 @@ class PixelOfficeWorld {
       for (let px = room.x; px < room.x + room.w; px += tileSize) {
         for (let py = room.y; py < room.y + room.h; py += tileSize) {
           const isWhite = ((px - room.x) / tileSize + (py - room.y) / tileSize) % 2 === 0;
-          ctx.fillStyle = isWhite ? "#334155" : "#1e293b";
+          if (this.lightMode) {
+            ctx.fillStyle = isWhite ? "#ffffff" : "#f1f5f9";
+          } else {
+            ctx.fillStyle = isWhite ? "#334155" : "#1e293b";
+          }
           ctx.fillRect(px, py, tileSize, tileSize);
         }
       }
     } else if (room.floorType === "metal_vent") {
-      ctx.fillStyle = "#0b0f19";
+      ctx.fillStyle = this.lightMode ? "#f8fafc" : "#0b0f19";
       ctx.fillRect(room.x, room.y, room.w, room.h);
-      ctx.strokeStyle = "#1e293b";
+      ctx.strokeStyle = this.lightMode ? "#cbd5e1" : "#1e293b";
       ctx.lineWidth = 1;
       for (let px = room.x; px < room.x + room.w; px += 32) {
         ctx.strokeRect(px, room.y, 32, room.h);
       }
     } else {
       // Standard tech floor
-      ctx.fillStyle = "#0f172a";
+      ctx.fillStyle = this.lightMode ? "#f8fafc" : "#0f172a";
       ctx.fillRect(room.x, room.y, room.w, room.h);
-      ctx.strokeStyle = "#1e293b";
+      ctx.strokeStyle = this.lightMode ? "#e2e8f0" : "#1e293b";
       ctx.lineWidth = 1;
       for (let px = room.x; px < room.x + room.w; px += 32) {
         for (let py = room.y; py < room.y + room.h; py += 32) {
@@ -489,13 +498,13 @@ class PixelOfficeWorld {
     const ctx = this.ctx;
     ctx.save();
     // Outer wall border
-    ctx.strokeStyle = "#334155";
+    ctx.strokeStyle = this.lightMode ? "#64748b" : "#334155";
     ctx.lineWidth = 4;
     ctx.strokeRect(room.x, room.y, room.w, room.h);
 
     // Accent line at bottom of top wall
     ctx.strokeStyle = room.color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(room.x, room.y + 24);
     ctx.lineTo(room.x + room.w, room.y + 24);
@@ -507,8 +516,13 @@ class PixelOfficeWorld {
   _drawRoomHeader(room) {
     const ctx = this.ctx;
     ctx.save();
-    ctx.fillStyle = "#0b1329";
+    ctx.fillStyle = this.lightMode ? "#ffffff" : "#0b1329";
     ctx.fillRect(room.x + 8, room.y + 4, room.w - 16, 18);
+    if (this.lightMode) {
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(room.x + 8, room.y + 4, room.w - 16, 18);
+    }
 
     ctx.fillStyle = room.color;
     ctx.font = "bold 10px 'Press Start 2P', monospace";
@@ -849,14 +863,14 @@ class PixelOfficeWorld {
     const bh = 16;
 
     // Bubble background
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = this.lightMode ? "#ffffff" : "#0f172a";
     ctx.fillRect(bx, by, bw, bh);
-    ctx.strokeStyle = "#38bdf8";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = this.lightMode ? "#0284c7" : "#38bdf8";
+    ctx.lineWidth = 1.5;
     ctx.strokeRect(bx, by, bw, bh);
 
     // Bubble pointer down
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = this.lightMode ? "#ffffff" : "#0f172a";
     ctx.beginPath();
     ctx.moveTo(x - 3, by + bh);
     ctx.lineTo(x + 3, by + bh);
@@ -864,7 +878,8 @@ class PixelOfficeWorld {
     ctx.fill();
 
     // Bubble text
-    ctx.fillStyle = "#f8fafc";
+    ctx.fillStyle = this.lightMode ? "#0f172a" : "#f8fafc";
+    ctx.font = "bold 9px 'Space Mono', monospace";
     ctx.fillText(char.speech, bx + pad, by + 11);
 
     ctx.restore();

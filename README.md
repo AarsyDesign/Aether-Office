@@ -83,12 +83,13 @@ Buka browser di: **`http://127.0.0.1:8000`**
 ## 🎮 2D Pixel Office Canvas World
 
 Engine visual baru [ui/pixel_world.js](ui/pixel_world.js) menghadirkan simulasi kantor retro RPG hidup:
+* **Fitur Sakelar Lampu Kantor & Light Mode**: Tombol `[💡 LAMPU: NYALA]` / `[🌙 LAMPU: REDUP]` di HUD atas untuk beralih antara Mode Terang (Daylight Office dengan kontras tinggi, kartu putih bersih, dan tipografi besar yang nyaman dibaca) dan Mode Gelap retro.
 * **8 Ruang Departemen Tematik**: Meja eksekutif CEO, cubicle developer dengan monitor menyala, War Room dengan papan tulis DAG, bar espresso dengan partikel uap kopi, rak server berkedip, sofa santai, dispenser galon bergelembung, dan mesin arcade.
 * **Karakter Sprite Pixel 16x24**: Animasi bernapas (*idle breathing*), mengetik cepat (*typing*), dan berjalan (*pathfinding*) menuju coffee machine saat istirahat.
 * **Live Speech Bubbles**: Balon percakapan pixel real-time di atas kepala agen (`"💻 Coding core.py..."`, `"🧪 Running pytest..."`, `"📋 Planning DAG..."`, `"☕ Ngopi dulu"`).
 * **Office Pets**: *Mimi si kucing* (tidur di karpet / jalan santai) & *Boni si anjing* (berkeliaran di breakroom).
 * **Toggle Viewport**: Tombol `[🎮 2D PIXEL VIEW]` / `[📋 ROOM MATRIX]` untuk berganti antara Canvas 2D dan kartu matriks.
-* **Audio Synthesizer 8-Bit & CRT Shader**: Efek suara sintetis murni Web Audio API (chime, blip, victory fanfare) & scanline overlay arcade retro tanpa aset eksternal.
+* **Audio Synthesizer 8-Bit & CRT Shader**: Efek suara sintetis murni Web Audio API (chime, blip, victory fanfare) & scanline overlay arcade retro tanpa aset eksternal (otomatis dinonaktifkan di mode terang agar tidak menggelapkan layar).
 
 ---
 
