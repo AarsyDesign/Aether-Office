@@ -142,7 +142,8 @@ class Planner:
             user_msg += f"\n\n## Fix Scope\nRegenerate only these files: {', '.join(fix_files)}"
 
         try:
-            result = self.agent.llm.chat(PLANNER_PROMPT, user_msg, json_mode=True)
+            planner_llm = self.agent.llm.for_role("planner") if hasattr(self.agent.llm, "for_role") else self.agent.llm
+            result = planner_llm.chat(PLANNER_PROMPT, user_msg, json_mode=True)
         except LLMError as e:
             self.agent._log("agent.failed", {"error": str(e), "phase": "planning"})
             self.agent.emit_event(

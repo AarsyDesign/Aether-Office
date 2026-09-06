@@ -147,7 +147,7 @@ def _clean_raw(text: str) -> str:
 def _extract_content(msg: dict) -> str:
     """Extract text from message, handling reasoning models."""
     content = msg.get("content")
-    reasoning = msg.get("reasoning_content")
+    reasoning = msg.get("reasoning_content") or msg.get("reasoning")
     if content:
         return content
     if reasoning:
