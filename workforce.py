@@ -204,6 +204,27 @@ def get_seed_roles() -> list[Role]:
             description="Builds data transformation pipelines and storage schemas",
             capabilities=["sql", "etl", "data_modeling"],
         ),
+        Role(
+            role_id="ai_engineer",
+            name="AI & LLM Engineer",
+            department="engineering",
+            description="Designs prompt templates, RAG vector pipelines, multi-LLM routing, and function calling",
+            capabilities=["prompt_engineering", "rag_pipeline", "llm_orchestration", "context_optimization", "function_calling"],
+        ),
+        Role(
+            role_id="database_administrator",
+            name="Database Administrator & Tuner",
+            department="engineering",
+            description="Manages database schemas, index tuning, data integrity, and query performance",
+            capabilities=["sql_optimization", "schema_design", "indexing", "sqlite_tuning", "data_integrity"],
+        ),
+        Role(
+            role_id="cybersecurity_specialist",
+            name="Cybersecurity Specialist",
+            department="engineering",
+            description="Performs vulnerability assessment, OWASP Top 10 mitigation, and code security auditing",
+            capabilities=["security_audit", "vulnerability_scan", "owasp_top_10", "code_audit", "secret_protection"],
+        ),
 
         # Design
         Role(
@@ -1119,10 +1140,23 @@ def seed_full_workforce(org: Organization) -> Organization:
         ("sales_001", "Doni Salman", "sales", "business", ["sales_pitch", "proposals", "negotiation"]),
         ("acc_mgr_001", "Reza Rahadian", "account_manager", "business", ["client_communication", "relationship_management"]),
         ("finance_001", "Sri Mulyani", "finance", "business", ["budgeting", "cost_estimation", "roi_analysis"]),
+        ("bizdev_001", "Bagus Wicaksono", "business_development", "business", ["partnership_strategy", "growth", "networking", "b2b_negotiation", "market_expansion"]),
         
         # Support
         ("support_001", "Lukman Sardi", "support_specialist", "support", ["ticket_resolution", "customer_guidance", "troubleshooting"]),
         ("comm_mgr_001", "Chicco Jerikho", "community_manager", "support", ["community_moderation", "event_hosting", "feedback_collection"]),
+        ("cs_001", "Syifa Aulia", "customer_support", "support", ["customer_support", "troubleshooting", "empathetic_communication", "issue_triage"]),
+
+        # Product Specialists & Leadership
+        ("ba_001", "Anisa Rahmawati", "business_analyst", "product", ["workflow_analysis", "metrics", "feasibility", "gap_analysis", "kpi_modeling"]),
+        ("prod_res_001", "Naufal Alamsyah", "product_researcher", "product", ["user_research", "market_analysis", "benchmarking", "usability_testing"]),
+        ("pm_lead_001", "Aryo Tejo", "product_manager", "product", ["task_breakdown", "planning", "prioritization", "scoping", "roadmap_strategy"]),
+
+        # Engineering Specialists & Principal Architecture
+        ("sa_001", "Prof. Bambang Soedarmono", "software_architect", "engineering", ["software_architecture", "dependency_graph", "topological_sort", "system_design", "technical_blueprints"]),
+        ("ai_eng_001", "Dr. Farhan Setiadi", "ai_engineer", "engineering", ["prompt_engineering", "rag_pipeline", "llm_orchestration", "context_optimization", "function_calling"]),
+        ("dba_001", "Gilang Pradana", "database_administrator", "engineering", ["sql_optimization", "schema_design", "indexing", "sqlite_tuning", "data_integrity"]),
+        ("sec_001", "Rizka Amalia", "cybersecurity_specialist", "engineering", ["security_audit", "vulnerability_scan", "owasp_top_10", "code_audit", "secret_protection"]),
     ]
 
     for emp_id, name, role_id, dept_id, caps in indonesian_specialists:
