@@ -371,10 +371,10 @@ def cmd_run(args):
         brief = sys.stdin.read()
     else:
         brief_path = Path(args.brief)
-        if not brief_path.exists():
-            print(f"❌ Brief file not found: {args.brief}")
-            sys.exit(1)
-        brief = brief_path.read_text(encoding="utf-8")
+        if brief_path.is_file():
+            brief = brief_path.read_text(encoding="utf-8")
+        else:
+            brief = args.brief
 
     # Generate project ID
     if args.name:

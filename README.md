@@ -56,14 +56,62 @@ llm:
 
 ### 4. Menjalankan Workflow Agen
 ```cmd
-# Periksa status kantor dan workforce
+# 1. Periksa kesiapan kantor dan seluruh karyawan AI
 .\aether.bat office status
 
-# Jalankan eksekusi proyek
+# 2. Periksa daftar karyawan dan divisinya
+.\aether.bat employees
+
+# 3. Jalankan pengerjaan proyek (Langsung ketik ide Anda)
 .\aether.bat run "Buat REST API manajemen inventaris dengan SQLite"
+
+# Atau jalankan menggunakan file brief:
+.\aether.bat run briefs/cashier-pondok.md
 ```
 
+> 💡 **Tips Windows PowerShell:**
+> Di PowerShell, selalu gunakan awalan `.\` (contoh: `.\aether` atau `.\aether.bat`), bukan `aether` tanpa titik. Alternatif lainnya, Anda bisa menggunakan `python cli.py <perintah>`.
+
 ---
+
+## 📖 Panduan Praktis & Tanya Jawab (FAQ)
+
+### ❓ 1. Apakah Harus Manual Memilih Agent?
+> **TIDAK PERLU! Sistem bekerja 100% Otonom.**
+Saat Anda menjalankan perintah `.\aether run "<ide proyek>"`, Anda tidak perlu memilih siapa yang menjadi PM atau siapa programmer-nya. Sistem Aether Office secara otomatis mengorkestrasi pipeline 4-fase:
+1. **Project Manager (`Budi Santoso`)** ➔ Otomatis membedah brief Anda menjadi tugas-tugas terstruktur.
+2. **Product Conceptor (`Siti Rahma`)** ➔ Otomatis menyusun spesifikasi teknis dan kriteria penerimaan.
+3. **Developer (`Eko Prasetyo`)** ➔ Otomatis menulis file kode nyata (`core.py`, modul aplikasi).
+4. **QA Engineer (`Ratna Sari`)** ➔ Otomatis memvalidasi sintaks dan mengaudit kode.
+
+*Hasil pengerjaan otomatis tersimpan rapi di folder `projects/<nama-proyek>/`.*
+
+---
+
+### ❓ 2. Apakah Dijalankan di Terminal atau Cukup Perintah di IDE?
+Anda memiliki dua cara fleksibel:
+
+* **Opsi A: Melalui Terminal Bawaan IDE (Sangat Disarankan)**
+  Buka terminal terintegrasi di Antigravity / VS Code (tekan tombol shortcut ``Ctrl + ` ``), lalu ketik perintah:
+  ```cmd
+  .\aether.bat office status
+  .\aether.bat run "Brief proyek Anda"
+  ```
+* **Opsi B: Langsung Melalui AI Pair Programmer di IDE**
+  Jika Anda sedang membuka IDE Antigravity, Anda cukup meminta langsung di chat:
+  > *"Tolong jalankan pipeline pengerjaan untuk aplikasi kasir berdasarkan briefs/cashier-pondok.md"*
+  
+  Asisten AI di IDE akan langsung mengeksekusi perintah CLI dan melaporkan progresnya kepada Anda.
+
+---
+
+### ❓ 3. Perbedaan `office status` vs `status <project_id>`
+* **`.\aether.bat office status`** ➔ Memeriksa **kesehatan seluruh kantor** (runtime status, detak scheduler, jumlah karyawan yang tersedia/sibuk, dan kuota anggaran).
+* **`.\aether.bat status <project_id>`** ➔ Memeriksa **progres proyek spesifik** yang sudah dibuat (contoh: `.\aether.bat status cashier-pondok-12345`).
+* **`.\aether.bat list`** ➔ Menampilkan seluruh ID proyek yang pernah dibuat.
+
+---
+
 
 ## 🏛️ Architecture
 
