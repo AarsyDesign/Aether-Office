@@ -175,12 +175,6 @@ def main():
     obj_parser.add_argument("--ticks", type=int, default=30, help="Maksimum detak scheduler saat eksekusi")
     obj_parser.add_argument("--reason", default="Dibatalkan pengguna via CLI", help="Alasan pembatalan objektif")
 
-    # dashboard / ui command
-    dash_parser = sub.add_parser("dashboard", aliases=["ui"], help="Buka visual game dashboard interaktif Aether Office di browser")
-    dash_parser.add_argument("--host", default="127.0.0.1", help="Host server dashboard (default: 127.0.0.1)")
-    dash_parser.add_argument("--port", type=int, default=8000, help="Port server dashboard (default: 8000)")
-    dash_parser.add_argument("--no-browser", "--no-open", dest="no_browser", action="store_true", help="Jangan buka browser secara otomatis")
-    dash_parser.add_argument("--config", default="config.yaml", help="Path file konfigurasi")
 
     # notify command (Telemetry Bridge)
     notify_parser = sub.add_parser("notify", help="Kirim pembaruan aktivitas AI riil ke dashboard Aether Office")
@@ -261,8 +255,6 @@ def main():
         cmd_project_resume(args)
     elif args.command == "objective":
         cmd_objective(args)
-    elif args.command in ("dashboard", "ui"):
-        cmd_dashboard(args)
     elif args.command in ("models", "router"):
         cmd_models(args)
     elif args.command == "notify":
@@ -368,57 +360,6 @@ def cmd_track(args):
         sys.exit(1)
 
 
-def cmd_dashboard(args):
-    """Launch the interactive game dashboard."""
-    from pathlib import Path
-    import subprocess
-    import shutil
-
-    # 1. Always prefer the project's virtual environment (.venv) if available
-    venv_python = Path(__file__).parent / ".venv" / "Scripts" / "python.exe"
-    if venv_python.exists() and sys.executable.lower() != str(venv_python.resolve()).lower():
-        res = subprocess.run([str(venv_python), str(Path(__file__).resolve())] + sys.argv[1:])
-        sys.exit(res.returncode)
-
-    # 2. Try importing fastapi & uvicorn; if missing or incompatible, auto-install them!
-    try:
-        import fastapi
-        import uvicorn
-    except (ImportError, Exception):
-        print("\n[*] Menyiapkan modul dashboard (FastAPI & Uvicorn)...")
-        installed = False
-        if shutil.which("uv"):
-            res = subprocess.run(["uv", "pip", "install", "fastapi", "uvicorn"])
-            if res.returncode == 0:
-                installed = True
-        if not installed:
-            res = subprocess.run([sys.executable, "-m", "pip", "install", "fastapi", "uvicorn"])
-            if res.returncode == 0:
-                installed = True
-
-        if installed:
-            print("[✓] Modul dashboard berhasil dipasang. Menjalankan server...\n")
-            try:
-                import fastapi
-                import uvicorn
-            except Exception as e2:
-                print(f"[!] Gagal memuat dependensi: {e2}")
-                sys.exit(1)
-        else:
-            print("\n" + "=" * 65)
-            print("❌ GAGAL MEMASANG DEPENDENSI DASHBOARD")
-            print("   Silakan jalankan perintah instalasi berikut di terminal:")
-            print("       .\\.venv\\Scripts\\python.exe -m pip install fastapi uvicorn")
-            print("=" * 65 + "\n")
-            sys.exit(1)
-
-    from dashboard import start_dashboard
-    start_dashboard(
-        host=args.host,
-        port=args.port,
-        auto_open=not args.no_browser,
-        config_path=args.config,
-    )
 
 
 
@@ -473,13 +414,6 @@ def cmd_run(args):
     streamer = CLIProgressStreamer()
     orchestrator.event_bus.subscribe(streamer.on_event)
 
-    # Attach PixelOffice bridge (UDP 9997 & HTTP 3003)
-    try:
-        from pixel_bridge import PixelOfficeBridge
-        pixel_bridge = PixelOfficeBridge(event_bus=orchestrator.event_bus)
-        pixel_bridge.start()
-    except Exception:
-        pass
 
     try:
         result = orchestrator.run(brief)

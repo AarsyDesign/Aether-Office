@@ -41,17 +41,6 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "httpx>=0.24.0",
-]
-ui = [
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.23.0",
-]
-
 [project.scripts]
 aether = "cli:main"
 
@@ -67,7 +56,6 @@ py-modules = [
     "artifacts",
     "budget",
     "cli",
-    "dashboard",
     "db",
     "delegation",
     "discussion",
@@ -101,16 +89,4 @@ py-modules = [
     "usage",
     "workflow",
     "workforce",
-    "pixel_bridge",
-]
-
-[tool.pytest.ini_options]
-testpaths = ["."]
-norecursedirs = ["projects", ".venv", "build", "dist", ".git", "ui", "logs", "scratch"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short"
-filterwarnings = [
-    "ignore::DeprecationWarning",
 ]
