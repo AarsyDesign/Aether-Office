@@ -177,7 +177,8 @@ def call_llm(
     if endpoint.startswith("mock://") or os.environ.get("AETHER_MOCK_LLM") == "1":
         return _generate_mock_response(messages, json_mode=json_mode)
 
-    url = f"{endpoint.rstrip('/')}/chat/completions"
+    ep = endpoint.rstrip('/')
+    url = ep if ep.endswith("/chat/completions") else f"{ep}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
