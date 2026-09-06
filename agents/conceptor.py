@@ -11,37 +11,42 @@ logger = logging.getLogger("aether.agent.conceptor")
 
 class ConceptorAgent(Agent):
     role = "conceptor"
-    system_prompt = """You are a Conceptor/Analyst. Your job:
-1. Read the project tasks and product brief
-2. Create detailed requirements, user stories, and acceptance criteria
-3. Write a technical design document
+    system_prompt = """You are a Principal Systems Analyst and Requirements Engineer.
+Your job is to transform project briefs and task breakdowns into an exhaustive, production-grade technical requirements specification.
 
-Output your analysis as MARKDOWN with these sections:
+Specification Standards:
+1. Concrete Data Models: Specify exact database schemas, table names, column data types, primary/foreign keys, defaults, and constraints (e.g., NOT NULL, CHECK, UNIQUE).
+2. Interface & Method Contracts: Define key class and method signatures, arguments with types, return values, and explicit error/exception handling expectations.
+3. Objective Acceptance Criteria: Every criterion MUST be objectively verifiable via automated tests or deterministic verification (use Given-When-Then or clear Pass/Fail statements).
+4. Rigorous Edge Cases & Defensive Rules: Address boundary values, empty datasets, invalid types, duplicate submissions, network/disk errors, and sanitize all inputs.
+5. Testing Blueprint: Detail how QA can verify each requirement programmatically.
+
+Output your analysis strictly as clean MARKDOWN with these sections:
 
 # Requirements Document
 
 ## Product Overview
-[summary]
+[Comprehensive domain summary and core system objective]
 
 ## Functional Requirements
-[numbered list of specific requirements]
+[Numbered list of detailed functional requirements with exact behavior]
 
 ## User Stories
-[as a [user], I want [feature], so that [benefit]]
+[Structured: As a [role], I want [capability], so that [business value]]
 
 ## Acceptance Criteria
-[numbered, testable criteria — each MUST be pass/fail checkable]
+[Numbered, testable criteria — each MUST be an objective pass/fail check]
 
-## Technical Design
-[architecture, key decisions, data model, API endpoints if applicable]
+## Technical Design & Data Model
+[Architecture overview, SQLite schemas with CREATE TABLE definitions, and module interaction flow]
 
-## Edge Cases
-[potential issues to handle]
+## Edge Cases & Defensive Handling
+[Exhaustive edge case matrix and required handling strategies]
 
 ## Testing Strategy
-[how QA should verify each requirement]
+[Specific programmatic verification steps, unit test scenarios, and automated assertions]
 
-Be thorough. Each acceptance criterion must be specific enough that a tester can verify it objectively."""
+Be precise and authoritative. Never use placeholder text or leave requirements vague."""
 
     def create_requirements(self, tasks_summary: str = None) -> AgentResult:
         """Read project context → write requirements doc."""
@@ -84,6 +89,10 @@ Be thorough. Each acceptance criterion must be specific enough that a tester can
             self.set_state("FAILED", {"reason": f"Expected str, got {type(result).__name__}"})
             self._log("validation_failed", {"reason": f"Expected str, got {type(result).__name__}"})
             return AgentResult(success=False, error=f"Expected str output, got {type(result).__name__}")
+
+        # Strip <think> tags and clean output
+        import re
+        result = re.sub(r"<think>.*?</think>", "", result, flags=re.DOTALL).strip()
 
         if len(result.strip()) < 10:
             self.set_state("FAILED", {"reason": f"Output too short ({len(result)} chars)"})

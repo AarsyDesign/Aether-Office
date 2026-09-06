@@ -11,32 +11,44 @@ from llm import LLMError
 
 logger = logging.getLogger("aether.agent.planner")
 
-PLANNER_PROMPT = """You are a Software Architect and Developer Planner.
-Your job is to create a structured implementation plan from project requirements.
-Break the software into isolated generation units (1 file = 1 unit).
+PLANNER_PROMPT = """You are a Principal Software Architect and Developer Planner.
+Your job is to design a robust, production-grade software architecture and break it into clean, isolated generation units (1 file = 1 unit).
+
+Architectural Principles:
+1. Modular Separation of Concerns: Split responsibilities cleanly. Avoid monolithic single files (>200-300 lines) that risk token truncation.
+   - For UI apps: Separate window shell, specific views/frames, dialogs, and styles.
+   - For Data: Separate database schema/connection, data models, and repository operations.
+   - For Business Logic: Decouple domain logic from UI presentation so services are independently testable.
+2. Unidirectional Dependency Flow:
+   - Level 1 (Foundation): Configuration, constants, data models, utility helpers.
+   - Level 2 (Data / Storage): Database connection, tables, queries, migrations.
+   - Level 3 (Business Logic / Services): Domain operations, state management, validations.
+   - Level 4 (Presentation / Interface): UI views, CLI commands, controllers.
+   - Level 5 (Entrypoint): Application runner (e.g. main.py or app.py).
+3. Explicit Contracts: Clearly specify `exports` (exact class and function names) and `depends_on` (exact relative paths to internal files) so developers can import them accurately.
+4. Clean Dependencies: Ensure there are NO circular dependencies.
 
 You MUST output ONLY valid JSON with this exact structure:
 {
-  "project_summary": "One paragraph summarizing what this software does",
-  "tech_stack": "Languages, frameworks, and libraries used",
+  "project_summary": "High-level summary of the system architecture and responsibilities",
+  "tech_stack": "Languages, frameworks, and libraries used (e.g., Python 3.10+, Tkinter, SQLite3)",
   "files": [
     {
       "path": "relative/path/to/file.ext",
-      "purpose": "What this file does and its architectural responsibility",
-      "dependencies": ["external_package_or_lib"],
-      "exports": ["ClassOrFunction1", "ClassOrFunction2"],
-      "depends_on": ["relative/path/to/internal_dependency.ext"],
+      "purpose": "Precise architectural responsibility and what this unit implements",
+      "dependencies": ["external_pip_package_if_any"],
+      "exports": ["PrimaryClass", "helper_function"],
+      "depends_on": ["relative/path/to/prerequisite_unit.ext"],
       "priority": 1
     }
   ]
 }
 
 Rules:
-- 1 file = 1 unit
-- Order files logically or specify depends_on accurately (foundation -> models -> services -> app -> tests)
-- No circular dependencies
-- All file paths must be relative to project root
-- Output ONLY the JSON object, no explanation or code fences outside JSON
+- 1 file = 1 unit.
+- Priority: Lower number = higher priority (e.g., foundation priority 1, entrypoint priority 5).
+- All file paths must be relative to project root (e.g. 'models/database.py', 'main.py').
+- Output ONLY the raw JSON object, no explanation or chatter outside JSON.
 """
 
 
@@ -142,6 +154,24 @@ class Planner:
 
         # Validate response structure
         self.last_raw_response = result
+        if isinstance(result, str):
+            import re
+            cleaned = re.sub(r"<think>.*?</think>", "", result, flags=re.DOTALL).strip()
+            fence_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", cleaned)
+            if fence_match:
+                try:
+                    result = json.loads(fence_match.group(1).strip())
+                except Exception:
+                    pass
+            if not isinstance(result, dict):
+                start = cleaned.find("{")
+                end = cleaned.rfind("}")
+                if start != -1 and end > start:
+                    try:
+                        result = json.loads(cleaned[start:end+1])
+                    except Exception:
+                        pass
+
         if not isinstance(result, dict):
             self.agent._log("validation_failed", {"reason": f"Expected dict, got {type(result).__name__}"})
             return AgentResult(success=False, error=f"Invalid response type: expected dict, got {type(result).__name__}")

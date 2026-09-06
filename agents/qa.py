@@ -66,49 +66,52 @@ def validate_qa_response(data: dict) -> list[str]:
 
 class QAAgent(Agent):
     role = "qa"
-    system_prompt = """You are a QA Engineer. Your job:
-1. Review the code against acceptance criteria
-2. Find bugs, missing features, edge cases
-3. Output structured test results
+    system_prompt = """You are a Lead QA Automation & Security Engineer.
+Your job is to conduct a meticulous, production-grade verification of the codebase against project requirements and acceptance criteria.
 
-## Input
-You'll receive:
-- Requirements + acceptance criteria
-- Code files
-- Test results (if available)
+Audit & Verification Standards:
+1. Syntax & Import Integrity:
+   - Verify that all files have valid syntax and import paths.
+   - Verify that internal cross-file imports accurately match the exported classes/functions from dependencies.
+2. Completeness & Quality:
+   - Flag any unfinished functions, TODOs, or placeholder implementations.
+   - Verify that all core functional workflows described in the requirements are actually implemented.
+3. Security & Robustness:
+   - Verify SQL queries use parameterization (`?` placeholders) to prevent SQL injection.
+   - Verify resource management (connections and file handles properly opened and closed via context managers).
+   - Verify defensive input validation and exception handling.
+4. Non-Interactive Test Commands:
+   - In `test_commands_to_run`, provide ONLY automated, non-interactive checks that run and exit immediately (e.g., `python -m compileall . -q`).
+   - CRITICAL: NEVER include commands that launch interactive desktop GUIs (like `python main.py` for Tkinter/PyQt apps) or wait for manual user input, as they will hang headless execution.
 
-## Output Format
-
-Output VALID JSON with this structure:
+Output Format:
+Output ONLY valid JSON with this exact structure:
 {
     "verdict": "PASS" or "FAIL",
-    "summary": "overall assessment",
+    "summary": "Detailed technical assessment of code quality, architecture compliance, and testability",
     "criteria_results": [
         {
-            "criterion": "criterion text",
+            "criterion": "Requirement or criterion statement",
             "status": "PASS" or "FAIL",
-            "evidence": "why",
-            "severity": "critical" or "major" or "minor" (for failures)
+            "evidence": "Concrete code reference or rationale",
+            "severity": "critical" or "major" or "minor"
         }
     ],
     "bugs_found": [
         {
-            "title": "bug title",
-            "description": "what's wrong",
-            "file": "file path",
-            "fix_suggestion": "how to fix"
+            "title": "Clear bug title",
+            "description": "Technical root cause and impact",
+            "file": "relative/path/to/file.ext",
+            "fix_suggestion": "Precise, actionable code fix"
         }
     ],
-    "test_commands_to_run": ["command1", "command2"],
-    "fix_instructions": "instructions for developer if FAIL"
+    "test_commands_to_run": ["python -m compileall . -q"],
+    "fix_instructions": "Direct architectural and code instructions for the developer if verdict is FAIL"
 }
 
 Rules:
-- Be strict — only PASS if criterion is fully met
-- Each bug must have a clear fix suggestion
-- test_commands_to_run should be actual runnable commands
-- fix_instructions must be specific enough for developer to act on
-- Output ONLY the JSON object"""
+- Be strict: PASS only if code is syntactically sound, fully implemented, secure, and meets acceptance criteria.
+- Output ONLY the raw JSON object, no explanation or chatter outside JSON."""
 
     def test(self) -> AgentResult:
         """Run full QA cycle: LLM review + test commands."""
@@ -215,14 +218,41 @@ Rules:
             f"## Code\n{code_files}\n\n"
             f"Review the code against requirements. Output JSON verdict."
         )
-        return self.llm.chat(self.system_prompt, user_msg, json_mode=True)
+        result = self.llm.chat(self.system_prompt, user_msg, json_mode=True)
+        if isinstance(result, str):
+            import re
+            cleaned = re.sub(r"<think>.*?</think>", "", result, flags=re.DOTALL).strip()
+            fence_match = re.search(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", cleaned)
+            if fence_match:
+                try:
+                    result = json.loads(fence_match.group(1).strip())
+                except Exception:
+                    pass
+            if not isinstance(result, dict):
+                start = cleaned.find("{")
+                end = cleaned.rfind("}")
+                if start != -1 and end > start:
+                    try:
+                        result = json.loads(cleaned[start:end+1])
+                    except Exception:
+                        pass
+        return result
 
     def _run_tests(self, commands: list[str]) -> dict:
-        """Execute test commands and capture output."""
+        """Execute test commands safely and capture output."""
         self._log("test_started", {"commands": commands})
         results = {}
 
+        # Safeguard against commands that launch blocking interactive GUI loops
+        filtered_commands = []
         for cmd in commands:
+            cmd_clean = cmd.strip()
+            if any(cmd_clean == f"python {entry}" or cmd_clean == f"python3 {entry}" for entry in ["main.py", "app.py", "gui.py", "run.py"]):
+                filtered_commands.append("python -m compileall . -q")
+            else:
+                filtered_commands.append(cmd)
+
+        for cmd in filtered_commands:
             try:
                 proc = subprocess.run(
                     cmd, shell=True, capture_output=True, text=True,

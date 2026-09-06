@@ -21,7 +21,7 @@ def _generate_mock_response(messages: list[dict], json_mode: bool = False) -> tu
     usage = {"prompt_tokens": 150, "completion_tokens": 120, "total_tokens": 270}
 
     # 1. Developer Planner (Software Architect / Implementation Plan)
-    if "developer planner" in sys_lower or "software architect" in sys_lower or "files" in sys_lower and "project_summary" in sys_lower:
+    if "developer planner" in sys_lower or "software architect" in sys_lower or ("files" in sys_lower and "project_summary" in sys_lower):
         res = {
             "project_summary": "Modular application with robust design",
             "tech_stack": "Python 3.11, SQLite",
@@ -43,21 +43,26 @@ def _generate_mock_response(messages: list[dict], json_mode: bool = False) -> tu
                     "priority": 2,
                 }
             ],
-            "dependency_analysis": "core.py -> test_core.py"
+            "generation_order": ["core.py", "test_core.py"]
         }
         return (json.dumps(res), usage) if json_mode else (json.dumps(res), usage)
 
     # 2. QA Agent (Test Runner / Verdict)
-    if "qa engineer" in sys_lower or "verdict" in sys_lower:
+    if "qa" in sys_lower or "verdict" in sys_lower:
         res = {
             "verdict": "PASS",
             "summary": "Automated verification completed with 0 errors. All test suites passed.",
-            "test_cases": [{"name": "test_core_module", "status": "PASS"}],
+            "criteria_results": [
+                {"criterion": "Application core runs successfully", "status": "PASS", "evidence": "Verified with clean exit code 0", "severity": "minor"}
+            ],
+            "bugs_found": [],
+            "test_commands_to_run": ["python -m compileall . -q"],
+            "fix_instructions": ""
         }
         return (json.dumps(res), usage) if json_mode else ("VERDICT: PASS\nAll tests passed successfully.", usage)
 
     # 3. Project Manager (Brief breakdown into tasks)
-    if "project manager" in sys_lower:
+    if "project manager" in sys_lower or "product manager" in sys_lower or "breakdown" in sys_lower or "brief" in user_lower:
         res = {
             "project_name": "Aether Automated Project",
             "project_description": "Autonomous end-to-end outcome verified by Aether Office.",
@@ -252,24 +257,41 @@ def call_llm_json(
     timeout: int = 300,
 ) -> tuple[dict, dict | None]:
     """Call LLM expecting JSON. Returns (parsed_dict, usage)."""
+    import re
     content, usage = call_llm(endpoint, api_key, model, messages,
                               temperature, max_tokens, json_mode=True, timeout=timeout)
-    # Strip markdown code fences if present
-    content = content.strip()
-    if content.startswith("```"):
-        lines = content.split("\n")
-        content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-        content = content.strip()
+    # Strip reasoning tags if present
+    cleaned = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
+    # 1. Direct parse
     try:
-        parsed = json.loads(content)
-    except json.JSONDecodeError as e:
-        raise LLMResponseError(f"Invalid JSON in response: {e}")
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, dict):
+            return parsed, usage
+    except json.JSONDecodeError:
+        pass
 
-    if not isinstance(parsed, dict):
-        raise LLMResponseError(f"Expected JSON object, got {type(parsed).__name__}")
+    # 2. Extract from markdown code fence
+    fence_match = re.search(r"```(?:json)?\s*\n(.*?)\n```", cleaned, re.DOTALL)
+    if fence_match:
+        try:
+            parsed = json.loads(fence_match.group(1).strip())
+            if isinstance(parsed, dict):
+                return parsed, usage
+        except json.JSONDecodeError:
+            pass
 
-    return parsed, usage
+    # 3. Extract from first { to last }
+    json_match = re.search(r"(\{.*\})", cleaned, re.DOTALL)
+    if json_match:
+        try:
+            parsed = json.loads(json_match.group(1).strip())
+            if isinstance(parsed, dict):
+                return parsed, usage
+        except json.JSONDecodeError:
+            pass
+
+    raise LLMResponseError(f"Could not parse valid JSON object from response: {content[:200]}")
 
 
 # --- Retry wrapper ---

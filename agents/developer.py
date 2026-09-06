@@ -13,7 +13,7 @@ from llm import LLMError
 
 logger = logging.getLogger("aether.agent.developer")
 
-UNIT_PROMPT = """You are a Senior Developer. Generate ONE file for this project.
+UNIT_PROMPT = """You are a Principal Software Engineer. Your task is to generate the complete, production-ready implementation of ONE specific file for this project.
 
 ## Project Summary
 {summary}
@@ -21,32 +21,23 @@ UNIT_PROMPT = """You are a Senior Developer. Generate ONE file for this project.
 ## Tech Stack
 {tech_stack}
 
-## This File
+## Target File Specification
 Path: {path}
 Purpose: {purpose}
 
-## Dependency Interfaces
+## Dependency Interfaces (Internal & External)
 {dep_interfaces}
 
-## Requirements (relevant excerpt)
+## Requirements & Acceptance Criteria (Excerpt)
 {requirements}
 
-## Output Format
-
-Output ONLY a JSON object:
-{{
-    "path": "{path}",
-    "content": "full file content as string (use \\n for newlines)",
-    "summary": "brief description of what was generated"
-}}
-
-Rules:
-- Output ONLY the JSON object, no other text
-- content must be complete and runnable
-- No placeholders, no TODOs
-- Use the dependency interfaces above (call their methods/classes)
-- Include proper imports
-- content is a JSON string — escape newlines as \\n, quotes as \\\""""
+## Instructions & Quality Standards:
+1. Write COMPLETE, functional, production-quality code.
+2. Absolutely NO placeholders, NO TODOs, and NO partial snippets.
+3. Include all required imports, class definitions, function implementations, and robust error handling.
+4. Integrate cleanly with the declared dependency interfaces above.
+5. Format your output cleanly in a markdown code fence for this file (e.g. ```python ... ```) OR as a JSON object with "path" and "content" fields.
+"""
 
 
 def validate_syntax(filepath: str, content: str) -> str | None:
@@ -85,27 +76,35 @@ def detect_truncation(output: str) -> list[str]:
     return warnings
 
 
-def detect_unit_truncation(content: str) -> list[str]:
-    """Detect truncation in a single file's content."""
+def detect_unit_truncation(content: str, filepath: str = "") -> list[str]:
+    """Detect actual truncation in a single file's content."""
     warnings = []
     if not content or not content.strip():
         warnings.append("Empty content")
         return warnings
 
-    # Unclosed code fences
+    # Unclosed code fences inside content
     fence_count = content.count("```")
     if fence_count % 2 != 0:
-        warnings.append("Unclosed code fence")
+        warnings.append("Unclosed code fence inside content")
+
+    # If it's a Python file and ast parses cleanly, it's structurally complete
+    if filepath.endswith(".py") or not filepath:
+        try:
+            ast.parse(content, filename=filepath or "unit.py")
+            return warnings
+        except SyntaxError:
+            pass
 
     # Unclosed brackets
     opens = content.count("{") + content.count("(") + content.count("[")
     closes = content.count("}") + content.count(")") + content.count("]")
-    if opens - closes > 1:
+    if opens - closes > 2:
         warnings.append(f"Unbalanced brackets ({opens} open, {closes} close)")
 
-    # Ends abruptly (no newline at end of file)
-    if not content.endswith("\n"):
-        warnings.append("Content may end abruptly")
+    stripped = content.strip()
+    if stripped.endswith(("(", "[", "{", "=", "+", "-", "*", "/", "\\", "def", "class", "import", "from")):
+        warnings.append("Content ends abruptly on incomplete token")
 
     return warnings
 
@@ -117,7 +116,7 @@ class DeveloperAgent(Agent):
                  agent_id: Optional[str] = None, event_bus: Optional[EventBus] = None):
         super().__init__(llm, db, project_id, output_dir, agent_id=agent_id, event_bus=event_bus)
         self.config = config or {}
-        self.unit_max_retries = self.config.get("developer", {}).get("unit_max_retries", 2)
+        self.unit_max_retries = self.config.get("developer", {}).get("unit_max_retries", 3)
         self.planner = Planner(self)
 
     def implement(self, fix_context: str = None) -> AgentResult:
@@ -272,6 +271,7 @@ class DeveloperAgent(Agent):
                 exports=unit_spec.get("exports", []),
             )
 
+        last_error = None
         for attempt in range(self.unit_max_retries):
             if attempt > 0:
                 self.set_state("WORKING", {"unit": path, "attempt": attempt + 1})
@@ -280,9 +280,18 @@ class DeveloperAgent(Agent):
                 "path": path, "attempt": attempt + 1,
             })
 
-            # Call LLM
+            # Call LLM with adaptive feedback from previous failure if retrying
+            call_context = context
+            if attempt > 0 and last_error:
+                call_context += (
+                    f"\n\n## ⚠️ PREVIOUS ATTEMPT FIX REQUEST\n"
+                    f"Your previous attempt to generate '{path}' failed with this error:\n"
+                    f"--> {last_error}\n"
+                    f"Please address this specific issue and output the complete, valid, non-truncated file for '{path}'."
+                )
+
             try:
-                raw = self.agent_llm_call(context)
+                raw = self.agent_llm_call(call_context)
             except LLMError as e:
                 self.db.update_dev_unit_status(unit_id, "FAILED", error=str(e),
                                                attempt=attempt + 1)
@@ -294,6 +303,7 @@ class DeveloperAgent(Agent):
             # Parse response
             content, parse_error = self._parse_unit_response(raw, path)
             if parse_error:
+                last_error = f"Parse failed: {parse_error}"
                 if attempt < self.unit_max_retries - 1:
                     self.set_state("RETRYING", {"unit": path, "attempt": attempt + 1, "progress": "RETRY", "reason": parse_error})
                     self._log("developer_unit_retry", {
@@ -310,8 +320,9 @@ class DeveloperAgent(Agent):
                 return AgentResult(success=False, error=f"Parse failed for {path}: {parse_error}")
 
             # Detect truncation
-            trunc_warnings = detect_unit_truncation(content)
+            trunc_warnings = detect_unit_truncation(content, filepath=path)
             if trunc_warnings:
+                last_error = f"Truncation detected: {', '.join(trunc_warnings)}"
                 if attempt < self.unit_max_retries - 1:
                     self.set_state("RETRYING", {"unit": path, "attempt": attempt + 1, "progress": "RETRY", "reason": f"truncation: {trunc_warnings}"})
                     self._log("developer_unit_retry", {
@@ -324,6 +335,7 @@ class DeveloperAgent(Agent):
             # Validate syntax
             syntax_error = validate_syntax(path, content)
             if syntax_error:
+                last_error = f"Syntax error: {syntax_error}"
                 if attempt < self.unit_max_retries - 1:
                     self.set_state("RETRYING", {"unit": path, "attempt": attempt + 1, "progress": "RETRY", "reason": f"syntax: {syntax_error}"})
                     self._log("developer_unit_retry", {
@@ -439,15 +451,30 @@ class DeveloperAgent(Agent):
         if not isinstance(raw, str):
             return None, f"Expected str, got {type(raw).__name__}"
 
-        # Try structured JSON first
-        content = self._try_parse_json(raw, expected_path)
+        # Strip reasoning tags (e.g. <think>...</think> from reasoning models)
+        cleaned = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
+
+        # 1. Try structured JSON first
+        content = self._try_parse_json(cleaned, expected_path)
         if content is not None:
             return content, None
 
-        # Fallback: parse fenced code block
-        content = self._try_parse_fenced(raw, expected_path)
+        # 2. Try fenced code block
+        content = self._try_parse_fenced(cleaned, expected_path)
         if content is not None:
             return content, None
+
+        # 3. Fallback: check if cleaned string is direct valid code
+        stripped = cleaned.strip()
+        if stripped:
+            if expected_path.endswith(".py"):
+                try:
+                    ast.parse(stripped, filename=expected_path)
+                    return stripped, None
+                except SyntaxError:
+                    pass
+            if any(stripped.startswith(kw) for kw in ("import ", "from ", "def ", "class ", "#!/", "# ", "/*", "//", "package ", "const ", "function ")):
+                return stripped, None
 
         return None, "Could not parse response as JSON or code fence"
 
@@ -463,7 +490,14 @@ class DeveloperAgent(Agent):
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
-            return None
+            m = re.search(r"(\{.*\})", raw, re.DOTALL)
+            if m:
+                try:
+                    data = json.loads(m.group(1))
+                except json.JSONDecodeError:
+                    return None
+            else:
+                return None
 
         if not isinstance(data, dict):
             return None
@@ -480,13 +514,23 @@ class DeveloperAgent(Agent):
         return content
 
     def _try_parse_fenced(self, raw: str, expected_path: str) -> str | None:
-        """Try to extract content from fenced code block."""
+        """Try to extract content from fenced code block (both closed and unclosed)."""
+        # 1. Closed code fences
         pattern = r"```(?:\w*)\s*\n(.*?)```"
         matches = re.findall(pattern, raw, re.DOTALL)
         if matches:
             content = max(matches, key=len).strip()
             if content:
                 return content
+
+        # 2. Unclosed code fence (truncated before ending backticks)
+        unclosed_pattern = r"```(?:\w*)\s*\n(.*)$"
+        unclosed = re.search(unclosed_pattern, raw, re.DOTALL)
+        if unclosed:
+            content = unclosed.group(1).strip()
+            if content:
+                return content
+
         return None
 
     def _parse_fix_files(self, fix_context: str) -> list[str] | None:
