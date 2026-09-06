@@ -1,4 +1,4 @@
-﻿# Aether Office Configuration Template
+# Aether Office Configuration Template
 # Copy this file to `config.yaml` and adjust settings according to your environment.
 
 # Central LLM Router / Gateway Configuration
@@ -11,10 +11,16 @@ llm:
   model: "gratisan"              # Default fallback model on the router
   temperature: 0.7
   max_tokens: 4096
-  timeout: 300
-  max_retries: 3
+  timeout: 45                    # Recommended 30-60s timeout for fast failover
+  max_retries: 2                 # Retries before switching to next fallback
 
-  # Optional: Route specific workforce roles to different models on the router
+  # Automatic Failover Chain (switches seamlessly if primary model hangs, times out, or errors)
+  fallbacks:
+    - gemini
+    - groq
+    - openrouter
+
+  # Optional: Route specific workforce roles or define provider presets
   models:
     default: "gratisan"
     pm: "gratisan"
@@ -24,6 +30,23 @@ llm:
     planning: "gratisan"         # e.g., deep reasoning model
     smart: "gratisan"            # e.g., flagship model
     fast: "gratisan"             # e.g., lightweight model
+
+    # Provider Presets for Fallback Chain:
+    gemini:
+      endpoint: "https://generativelanguage.googleapis.com/v1beta"
+      model: "gemini-3.6-flash"
+      api_key: "your-gemini-api-key"
+      timeout: 45
+    groq:
+      endpoint: "https://api.groq.com/openai/v1"
+      model: "qwen/qwen3.8-27b"
+      api_key: "your-groq-api-key"
+      timeout: 30
+    openrouter:
+      endpoint: "https://openrouter.ai/api/v1"
+      model: "minimax/minimax-m3:free"
+      api_key: "your-openrouter-api-key"
+      timeout: 45
 
 developer:
   unit_max_retries: 2    # Maximum retries per code generation unit

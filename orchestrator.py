@@ -61,6 +61,7 @@ class Orchestrator:
             timeout=llm_cfg.get("timeout", 300),
             extra_body=llm_cfg.get("extra_body"),
             models=llm_cfg.get("models"),
+            fallbacks=llm_cfg.get("fallbacks"),
         )
 
         self.factory = AgentFactory(organization=self.org)

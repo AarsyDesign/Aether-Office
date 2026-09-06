@@ -305,6 +305,14 @@ def call_llm_json(
 
 # --- Retry wrapper ---
 
+def _safe_print(msg: str) -> None:
+    """Print message safely without UnicodeEncodeError on cp1252 consoles."""
+    try:
+        print(msg)
+    except UnicodeEncodeError:
+        print(msg.encode("ascii", errors="replace").decode("ascii"))
+
+
 def call_llm_with_retry(
     endpoint: str,
     api_key: str,
@@ -316,37 +324,99 @@ def call_llm_with_retry(
     timeout: int = 300,
     max_retries: int = 3,
     extra_body: dict | None = None,
+    fallbacks: list[dict] | None = None,
 ) -> tuple[str | dict, dict | None]:
-    """Call LLM with retry. Returns (content_or_dict, usage). Raises after max_retries."""
-    last_error = None
-    for attempt in range(max_retries):
-        try:
-            if json_mode:
-                result, usage = call_llm_json(endpoint, api_key, model, messages,
-                                              temperature, max_tokens, timeout, extra_body=extra_body)
-                return result, usage
-            else:
-                result, usage = call_llm(endpoint, api_key, model, messages,
-                                         temperature, max_tokens, json_mode=False, timeout=timeout, extra_body=extra_body)
-                return result, usage
-        except LLMAuthError:
-            raise  # Never retry auth errors
-        except (LLMRateLimitError, LLMTimeoutError, LLMResponseError, LLMError) as e:
-            last_error = e
-            if attempt < max_retries - 1:
-                wait = min((2 ** attempt) * 5, 60)  # 5s, 10s, 20s, cap 60s
-                logger.warning(f"LLM attempt {attempt+1}/{max_retries} failed: {e}. Retry in {wait}s")
-                print(f"   ⚠ Attempt {attempt+1}/{max_retries}: {e}. Retry in {wait}s...")
-                time.sleep(wait)
-            else:
-                logger.error(f"LLM failed after {max_retries} attempts: {e}")
+    """Call LLM with automatic retry and multi-provider failover.
+    
+    Tries the primary target first. If an unrecoverable failure occurs
+    (timeout, rate limit, connection error, server 5xx, or auth issue),
+    it automatically transitions down the fallback chain.
+    """
+    targets = [{
+        "name": f"primary ({model})",
+        "endpoint": endpoint,
+        "api_key": api_key,
+        "model": model,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "timeout": timeout,
+        "extra_body": extra_body,
+    }]
+    if fallbacks:
+        for idx, fb in enumerate(fallbacks):
+            targets.append({
+                "name": fb.get("name") or f"fallback_{idx+1} ({fb.get('model')})",
+                "endpoint": fb.get("endpoint", endpoint),
+                "api_key": fb.get("api_key", api_key),
+                "model": fb.get("model", model),
+                "temperature": fb.get("temperature", temperature),
+                "max_tokens": fb.get("max_tokens", max_tokens),
+                "timeout": fb.get("timeout", timeout),
+                "extra_body": fb.get("extra_body", extra_body),
+            })
 
-    raise LLMError(f"LLM failed after {max_retries} attempts: {last_error}",
-                   attempt=max_retries, retries_left=0)
+    total_targets = len(targets)
+    last_error = None
+
+    for target_idx, tgt in enumerate(targets):
+        target_name = tgt["name"]
+        tgt_ep = tgt["endpoint"]
+        tgt_key = tgt["api_key"]
+        tgt_model = tgt["model"]
+        tgt_temp = tgt["temperature"]
+        tgt_max_tokens = tgt["max_tokens"]
+        tgt_timeout = tgt["timeout"]
+        tgt_extra = tgt["extra_body"]
+
+        # Cap retries per target when fallbacks exist to avoid long freezing
+        retries_for_target = min(max_retries, 2) if total_targets > 1 else max_retries
+
+        for attempt in range(retries_for_target):
+            try:
+                if json_mode:
+                    result, usage = call_llm_json(
+                        tgt_ep, tgt_key, tgt_model, messages,
+                        tgt_temp, tgt_max_tokens, tgt_timeout, extra_body=tgt_extra
+                    )
+                    return result, usage
+                else:
+                    result, usage = call_llm(
+                        tgt_ep, tgt_key, tgt_model, messages,
+                        tgt_temp, tgt_max_tokens, json_mode=False, timeout=tgt_timeout, extra_body=tgt_extra
+                    )
+                    return result, usage
+            except LLMAuthError as e:
+                last_error = e
+                logger.warning(f"Auth failure on {target_name}: {e}")
+                if target_idx < total_targets - 1:
+                    next_tgt = targets[target_idx + 1]["name"]
+                    _safe_print(f"   [!] [LLM Failover] {target_name} auth error: {e}. Switching to {next_tgt}...")
+                    break
+                else:
+                    raise
+            except (LLMRateLimitError, LLMTimeoutError, LLMResponseError, LLMError) as e:
+                last_error = e
+                if attempt < retries_for_target - 1:
+                    wait = min((2 ** attempt) * 3, 15)
+                    logger.warning(f"LLM attempt {attempt+1}/{retries_for_target} on {target_name} failed: {e}. Retry in {wait}s")
+                    _safe_print(f"   [!] Attempt {attempt+1}/{retries_for_target} [{target_name}]: {e}. Retry in {wait}s...")
+                    time.sleep(wait)
+                else:
+                    logger.warning(f"Target {target_name} failed after {retries_for_target} attempts: {e}")
+                    if target_idx < total_targets - 1:
+                        next_tgt = targets[target_idx + 1]["name"]
+                        _safe_print(f"   [>>] [LLM Failover] {target_name} unavailable ({e}). Switching to {next_tgt}...")
+                        break
+
+    raise LLMError(
+        f"All LLM targets ({total_targets}) failed. Last error: {last_error}",
+        attempt=total_targets,
+        retries_left=0,
+    )
 
 
 class LLMClient:
-    """Reusable LLM client supporting single endpoints or central LLM Routers (with multiple models)."""
+    """Reusable LLM client supporting single endpoints, central LLM Routers, and automatic failovers."""
 
     def __init__(
         self,
@@ -359,6 +429,7 @@ class LLMClient:
         timeout: int = 300,
         extra_body: dict | None = None,
         models: dict | None = None,
+        fallbacks: list[dict | str] | None = None,
     ):
         self.endpoint = endpoint
         self.api_key = api_key
@@ -369,9 +440,52 @@ class LLMClient:
         self.timeout = timeout
         self.extra_body = dict(extra_body) if extra_body else {}
         self.models = dict(models) if models else {}
+        self.fallbacks = list(fallbacks) if fallbacks else []
+
+    def _resolve_fallbacks(self, custom_fallbacks: list[dict | str] | None = None) -> list[dict]:
+        """Convert fallback references (strings or dicts) into fully-qualified target dicts."""
+        source = custom_fallbacks if custom_fallbacks is not None else self.fallbacks
+        resolved = []
+        for fb in source:
+            if isinstance(fb, str):
+                preset = self.models.get(fb)
+                if isinstance(preset, dict):
+                    resolved.append({
+                        "name": fb,
+                        "endpoint": preset.get("endpoint", self.endpoint),
+                        "api_key": preset.get("api_key", self.api_key),
+                        "model": preset.get("model", self.model),
+                        "temperature": preset.get("temperature", self.temperature),
+                        "max_tokens": preset.get("max_tokens", self.max_tokens),
+                        "timeout": preset.get("timeout", self.timeout),
+                        "extra_body": preset.get("extra_body", self.extra_body),
+                    })
+                elif isinstance(preset, str):
+                    resolved.append({
+                        "name": fb,
+                        "endpoint": self.endpoint,
+                        "api_key": self.api_key,
+                        "model": preset,
+                        "temperature": self.temperature,
+                        "max_tokens": self.max_tokens,
+                        "timeout": self.timeout,
+                        "extra_body": self.extra_body,
+                    })
+            elif isinstance(fb, dict):
+                resolved.append({
+                    "name": fb.get("name") or fb.get("model", "fallback"),
+                    "endpoint": fb.get("endpoint", self.endpoint),
+                    "api_key": fb.get("api_key", self.api_key),
+                    "model": fb.get("model", self.model),
+                    "temperature": fb.get("temperature", self.temperature),
+                    "max_tokens": fb.get("max_tokens", self.max_tokens),
+                    "timeout": fb.get("timeout", self.timeout),
+                    "extra_body": fb.get("extra_body", self.extra_body),
+                })
+        return resolved
 
     def for_model(self, model_name: str, extra_body: dict | None = None) -> "LLMClient":
-        """Spawn a new LLMClient sharing the same router credentials but targeting a different model."""
+        """Spawn a new LLMClient sharing credentials but targeting a different model."""
         return LLMClient(
             endpoint=self.endpoint,
             api_key=self.api_key,
@@ -382,6 +496,7 @@ class LLMClient:
             timeout=self.timeout,
             extra_body=extra_body if extra_body is not None else self.extra_body,
             models=self.models,
+            fallbacks=self.fallbacks,
         )
 
     def for_role(self, role: str) -> "LLMClient":
@@ -399,6 +514,7 @@ class LLMClient:
             target = self.models.get("default", self.model)
 
         if isinstance(target, dict):
+            role_fallbacks = target.get("fallbacks", self.fallbacks)
             return LLMClient(
                 endpoint=target.get("endpoint", self.endpoint),
                 api_key=target.get("api_key", self.api_key),
@@ -409,6 +525,7 @@ class LLMClient:
                 timeout=target.get("timeout", self.timeout),
                 extra_body=target.get("extra_body", self.extra_body),
                 models=self.models,
+                fallbacks=role_fallbacks,
             )
         elif isinstance(target, str) and target != self.model:
             return self.for_model(target)
@@ -444,8 +561,9 @@ class LLMClient:
         json_mode: bool = False,
         model: str | None = None,
         extra_body: dict | None = None,
+        fallbacks: list[dict | str] | None = None,
     ) -> str | dict:
-        """Single-turn chat. Supports router model override."""
+        """Single-turn chat. Supports router model override and automatic failover."""
         if isinstance(user, bool):
             json_mode = user
             user = None
@@ -460,10 +578,12 @@ class LLMClient:
         body = dict(self.extra_body)
         if extra_body:
             body.update(extra_body)
+        resolved_fallbacks = self._resolve_fallbacks(fallbacks)
         result, _usage = call_llm_with_retry(
             self.endpoint, self.api_key, target_model, messages,
             self.temperature, self.max_tokens, json_mode, self.timeout, self.max_retries,
             extra_body=body if body else None,
+            fallbacks=resolved_fallbacks,
         )
         return result
 
@@ -473,15 +593,19 @@ class LLMClient:
         json_mode: bool = False,
         model: str | None = None,
         extra_body: dict | None = None,
+        fallbacks: list[dict | str] | None = None,
     ) -> str | dict:
-        """Multi-turn chat. Supports router model override."""
+        """Multi-turn chat. Supports router model override and automatic failover."""
         target_model = model or self.model
         body = dict(self.extra_body)
         if extra_body:
             body.update(extra_body)
+        resolved_fallbacks = self._resolve_fallbacks(fallbacks)
         result, _usage = call_llm_with_retry(
             self.endpoint, self.api_key, target_model, messages,
             self.temperature, self.max_tokens, json_mode, self.timeout, self.max_retries,
             extra_body=body if body else None,
+            fallbacks=resolved_fallbacks,
         )
         return result
+
