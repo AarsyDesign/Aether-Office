@@ -184,7 +184,12 @@ def call_llm(
         return _generate_mock_response(messages, json_mode=json_mode)
 
     ep = endpoint.rstrip('/')
-    url = ep if ep.endswith("/chat/completions") else f"{ep}/chat/completions"
+    if "generativelanguage.googleapis.com" in ep and not ep.endswith("/chat/completions"):
+        base = ep if ep.endswith("/openai") else f"{ep}/openai"
+        url = f"{base}/chat/completions"
+    else:
+        url = ep if ep.endswith("/chat/completions") else f"{ep}/chat/completions"
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
