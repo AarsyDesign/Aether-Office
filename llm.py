@@ -176,6 +176,7 @@ def call_llm(
     max_tokens: int = 4096,
     json_mode: bool = False,
     timeout: int = 300,
+    extra_body: dict | None = None,
 ) -> tuple[str, dict | None]:
     """Call LLM. Returns (content, usage). Raises LLMError on failure."""
     # Check offline mock mode
@@ -194,6 +195,8 @@ def call_llm(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    if extra_body and isinstance(extra_body, dict):
+        payload.update(extra_body)
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
 
@@ -255,11 +258,12 @@ def call_llm_json(
     temperature: float = 0.7,
     max_tokens: int = 4096,
     timeout: int = 300,
+    extra_body: dict | None = None,
 ) -> tuple[dict, dict | None]:
     """Call LLM expecting JSON. Returns (parsed_dict, usage)."""
     import re
     content, usage = call_llm(endpoint, api_key, model, messages,
-                              temperature, max_tokens, json_mode=True, timeout=timeout)
+                              temperature, max_tokens, json_mode=True, timeout=timeout, extra_body=extra_body)
     # Strip reasoning tags if present
     cleaned = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
@@ -306,6 +310,7 @@ def call_llm_with_retry(
     json_mode: bool = False,
     timeout: int = 300,
     max_retries: int = 3,
+    extra_body: dict | None = None,
 ) -> tuple[str | dict, dict | None]:
     """Call LLM with retry. Returns (content_or_dict, usage). Raises after max_retries."""
     last_error = None
@@ -313,11 +318,11 @@ def call_llm_with_retry(
         try:
             if json_mode:
                 result, usage = call_llm_json(endpoint, api_key, model, messages,
-                                              temperature, max_tokens, timeout)
+                                              temperature, max_tokens, timeout, extra_body=extra_body)
                 return result, usage
             else:
                 result, usage = call_llm(endpoint, api_key, model, messages,
-                                         temperature, max_tokens, json_mode=False, timeout=timeout)
+                                         temperature, max_tokens, json_mode=False, timeout=timeout, extra_body=extra_body)
                 return result, usage
         except LLMAuthError:
             raise  # Never retry auth errors
@@ -347,6 +352,7 @@ class LLMClient:
         max_tokens: int = 4096,
         max_retries: int = 3,
         timeout: int = 300,
+        extra_body: dict | None = None,
         models: dict | None = None,
     ):
         self.endpoint = endpoint
@@ -356,9 +362,10 @@ class LLMClient:
         self.max_tokens = max_tokens
         self.max_retries = max_retries
         self.timeout = timeout
+        self.extra_body = dict(extra_body) if extra_body else {}
         self.models = dict(models) if models else {}
 
-    def for_model(self, model_name: str) -> "LLMClient":
+    def for_model(self, model_name: str, extra_body: dict | None = None) -> "LLMClient":
         """Spawn a new LLMClient sharing the same router credentials but targeting a different model."""
         return LLMClient(
             endpoint=self.endpoint,
@@ -368,6 +375,7 @@ class LLMClient:
             max_tokens=self.max_tokens,
             max_retries=self.max_retries,
             timeout=self.timeout,
+            extra_body=extra_body if extra_body is not None else self.extra_body,
             models=self.models,
         )
 
@@ -384,7 +392,20 @@ class LLMClient:
                     break
         if not target:
             target = self.models.get("default", self.model)
-        if target and target != self.model:
+
+        if isinstance(target, dict):
+            return LLMClient(
+                endpoint=target.get("endpoint", self.endpoint),
+                api_key=target.get("api_key", self.api_key),
+                model=target.get("model", self.model),
+                temperature=target.get("temperature", self.temperature),
+                max_tokens=target.get("max_tokens", self.max_tokens),
+                max_retries=target.get("max_retries", self.max_retries),
+                timeout=target.get("timeout", self.timeout),
+                extra_body=target.get("extra_body", self.extra_body),
+                models=self.models,
+            )
+        elif isinstance(target, str) and target != self.model:
             return self.for_model(target)
         return self
 
@@ -417,6 +438,7 @@ class LLMClient:
         user: str | None = None,
         json_mode: bool = False,
         model: str | None = None,
+        extra_body: dict | None = None,
     ) -> str | dict:
         """Single-turn chat. Supports router model override."""
         if isinstance(user, bool):
@@ -430,9 +452,13 @@ class LLMClient:
                 {"role": "user", "content": user},
             ]
         target_model = model or self.model
+        body = dict(self.extra_body)
+        if extra_body:
+            body.update(extra_body)
         result, _usage = call_llm_with_retry(
             self.endpoint, self.api_key, target_model, messages,
             self.temperature, self.max_tokens, json_mode, self.timeout, self.max_retries,
+            extra_body=body if body else None,
         )
         return result
 
@@ -441,11 +467,16 @@ class LLMClient:
         messages: list[dict],
         json_mode: bool = False,
         model: str | None = None,
+        extra_body: dict | None = None,
     ) -> str | dict:
         """Multi-turn chat. Supports router model override."""
         target_model = model or self.model
+        body = dict(self.extra_body)
+        if extra_body:
+            body.update(extra_body)
         result, _usage = call_llm_with_retry(
             self.endpoint, self.api_key, target_model, messages,
             self.temperature, self.max_tokens, json_mode, self.timeout, self.max_retries,
+            extra_body=body if body else None,
         )
         return result

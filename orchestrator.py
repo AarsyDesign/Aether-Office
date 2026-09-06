@@ -59,6 +59,7 @@ class Orchestrator:
             max_tokens=llm_cfg.get("max_tokens", 4096),
             max_retries=llm_cfg.get("max_retries", 3),
             timeout=llm_cfg.get("timeout", 300),
+            extra_body=llm_cfg.get("extra_body"),
             models=llm_cfg.get("models"),
         )
 
