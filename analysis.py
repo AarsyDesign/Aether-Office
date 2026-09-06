@@ -168,6 +168,7 @@ class RiskAnalyzer:
         estimated_cost: float,
         organization: Optional[Organization] = None,
         ambiguity_score: float = 0.0,
+        estimated_duration: float = 24.0,
     ) -> list[RiskAssessment]:
         risks: list[RiskAssessment] = []
 
@@ -534,6 +535,7 @@ class ObjectiveAnalyzer:
             estimated_cost=estimated_cost,
             organization=self.organization,
             ambiguity_score=ambiguity_score,
+            estimated_duration=est_duration,
         )
 
         # 7. Confidence Score (0.0 to 1.0)

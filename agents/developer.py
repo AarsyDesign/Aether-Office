@@ -6,6 +6,8 @@ import re
 import ast
 import logging
 from pathlib import Path
+from typing import Optional
+from events import EventBus
 from .base import Agent
 from .planner import Planner
 from result import AgentResult

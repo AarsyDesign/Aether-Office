@@ -18,7 +18,8 @@
 ## 🌟 What is Aether Office?
 
 Far more than a simple prompt wrapper, **Aether Office** models a **comprehensive, autonomous virtual software company**:
-- **30+ Specialized AI Employees** distributed across **8 Departments** (*Engineering, Product, Design, Marketing, Research, Operations, Business, Support*).
+- **47 Specialized AI Employees** distributed across **8 Departments** (*Engineering, Product, Design, Marketing, Research, Operations, Business, Support*) with **0 vacant roles**.
+- **Multi-Provider AI Load-Sharing**: Concurrently utilizes **Google Gemini**, **Groq**, **NVIDIA NIM**, and **OpenRouter** to bypass rate limits and maximize inference speed and depth.
 - **100% Autonomous Coordination**: No manual agent selection required. Provide a natural-language prompt or brief file, and the agent hierarchy (PM ➔ Conceptor ➔ Developer ➔ QA) self-organizes to deliver the project.
 - **Real Code Generation**: Writes functional codebases directly to disk under `projects/<project-name>/`.
 - **Adaptive Planning & Quality Gate**: Decomposes complex objectives into a Directed Acyclic Graph (DAG) of discrete tasks and scores plan viability (0-100) before execution.
@@ -49,22 +50,39 @@ pip install -e .
 
 ## 🤖 AI Configuration (`config.yaml`)
 
-Before executing agents with live LLMs, configure your provider in **[config.yaml](config.yaml)**:
+Before executing agents with live LLMs, configure your provider in **[config.yaml](config.yaml)**. Aether Office supports single-provider as well as **multi-provider role-based load-sharing**:
 
 ```yaml
 llm:
-  endpoint: "https://openrouter.ai/api/v1"   # Any OpenAI-compatible endpoint
-  api_key: "sk-or-v1-xxxxxxxxxxxxxxxx"      # Your API key
-  model: "meta-llama/llama-3.3-70b-instruct" # Default model
+  # Default fallback endpoint
+  endpoint: "https://generativelanguage.googleapis.com/v1beta"
+  api_key: "AIzaSy..."
+  model: "gemini-3.6-flash"
+
+# Multi-Provider Role Routing (Anti-Limit & High Speed)
+roles:
+  qa:
+    endpoint: "https://api.groq.com/openai/v1"
+    model: "qwen/qwen3.8-27b"
+  developer:
+    endpoint: "https://integrate.api.nvidia.com/v1"
+    model: "deepseek-ai/deepseek-v4-pro-0813"
+  conceptor:
+    endpoint: "https://generativelanguage.googleapis.com/v1beta"
+    model: "gemini-3.6-flash"
+  pm:
+    endpoint: "https://integrate.api.nvidia.com/v1"
+    model: "moonshotai/kimi-k3"
 ```
 
 ### Supported AI Providers:
-| Provider | Endpoint | Notes |
+| Provider | Endpoint | Highlights |
 | :--- | :--- | :--- |
-| **OpenRouter** *(Cloud)* | `https://openrouter.ai/api/v1` | Recommended; broad access to open and commercial models |
-| **Groq** *(High Speed)* | `https://api.groq.com/openai/v1` | Fast inference for quick coding iterations |
-| **Ollama** *(Local / Free)* | `http://localhost:11434/v1` | Fully offline; ensure Ollama is running locally |
-| **Local Proxy / 9router** | `http://localhost:20128/v1` | Ensure your local proxy server is started before running |
+| **Google Gemini** *(Cloud)* | `https://generativelanguage.googleapis.com/v1beta` | 1M+ token context window, multimodal, reliable for analysis and concepting |
+| **Groq** *(High Speed)* | `https://api.groq.com/openai/v1` | **0.4s response times (Groq LPU)**, ideal for instant code audits, QA & triage |
+| **NVIDIA NIM** *(Elite Models)* | `https://integrate.api.nvidia.com/v1` | Hosts DeepSeek-v4 Pro/Flash & Kimi K3 for deep reasoning and code generation |
+| **OpenRouter** *(Multi-Model)* | `https://openrouter.ai/api/v1` | Broad access to open and commercial models (MiniMax, Nemotron, Llama) |
+| **Ollama / Local** *(Free / Offline)* | `http://localhost:11434/v1` | Fully offline execution with local weights |
 | **Offline Mock Mode** | *No setup required* | Append `--mock` to any command for instant offline dry runs |
 
 ---
@@ -79,7 +97,7 @@ Inspect runtime status, heartbeat scheduler, and employee availability:
 .\aether.bat office status
 ```
 
-### 2️⃣ List 30+ Specialized Workforce Employees
+### 2️⃣ List 47 Specialized Workforce Employees
 View all AI team members, departments, skill sets, and availability:
 ```powershell
 .\aether.bat employees
@@ -124,10 +142,10 @@ projects/<project-name>-<timestamp>/
 > **NO. The pipeline is 100% Autonomous.**
 
 When you run `.\aether.bat run "..."`, you do not have to select who acts as PM, architect, or developer. The built-in 4-phase pipeline executes automatically:
-1. **Project Manager (`Budi Santoso`)** ➔ Breaks down your brief into structured, dependent milestones.
-2. **Product Conceptor (`Siti Rahma`)** ➔ Compiles technical specifications and acceptance criteria.
+1. **Project Manager (`Budi Santoso` / `Aryo Tejo`)** ➔ Breaks down your brief into structured, dependent milestones.
+2. **Product Conceptor (`Dewi Lestari`)** ➔ Compiles technical specifications and acceptance criteria.
 3. **Developer (`Eko Prasetyo`)** ➔ Generates the implementation code file by file.
-4. **QA Engineer (`Ratna Sari`)** ➔ Validates syntax, reviews code quality, and verifies outputs.
+4. **QA Engineer (`Ratna Sari` / `Fitri Handayani`)** ➔ Validates syntax, reviews code quality, and verifies outputs.
 
 ---
 
@@ -160,7 +178,7 @@ Both methods are fully supported:
 This error occurs when Aether Office attempts to contact the LLM endpoint in `config.yaml`, but the local server/proxy is **not running or unreachable**.
 * **Remedies:**
   1. If using a local router (e.g., port 20128), start your local proxy process first.
-  2. Or update `endpoint` and `api_key` in [config.yaml](config.yaml) to a cloud provider like OpenRouter or Groq.
+  2. Or update `endpoint` and `api_key` in [config.yaml](config.yaml) to a cloud provider like Google Gemini, Groq, or OpenRouter.
   3. Or test in offline simulation mode using `--mock`:
      ```powershell
      .\aether.bat run "Your project idea" --mock
@@ -190,12 +208,16 @@ flowchart TD
         CodePipeline --> DiskWriter[💾 Disk Writer projects/name/]
     end
 
-    subgraph Workforce_Pool [Workforce Pool]
-        Matcher --> Emp1[Budi Santoso - PM Lead]
-        Matcher --> Emp2[Siti Rahma - Product Conceptor]
+    subgraph Workforce_Pool [Workforce Pool - 47 Active Employees]
+        Matcher --> Emp1[Budi Santoso / Aryo Tejo - PM Lead]
+        Matcher --> Emp2[Dewi Lestari - Product Conceptor]
         Matcher --> Emp3[Eko Prasetyo - Developer Lead]
         Matcher --> Emp4[Ratna Sari - QA Engineer]
-        Matcher --> EmpN[... 30+ Specialists across 8 Divisions]
+        Matcher --> Emp5[Prof. Bambang Soedarmono - Software Architect]
+        Matcher --> Emp6[Dr. Farhan Setiadi - AI & RAG Engineer]
+        Matcher --> Emp7[Gilang Pradana - Database Administrator]
+        Matcher --> Emp8[Rizka Amalia - Cybersecurity Specialist]
+        Matcher --> EmpN[... 47 Specialists across 8 Divisions]
     end
 ```
 
