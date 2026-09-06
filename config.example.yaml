@@ -1,4 +1,4 @@
-# Aether Office Configuration Template
+﻿# Aether Office Configuration Template
 # Copy this file to `config.yaml` and adjust settings according to your environment.
 
 # Central LLM Router / Gateway Configuration
@@ -36,3 +36,11 @@ project:
 qa:
   max_retries: 3
   run_tests: true
+
+# Pixel Agents 2D Virtual Office Simulation Integration
+pixel_agents:
+  enabled: true                  # Set to true to visualize agents in Pixel Agents
+  auto_discover: true            # Automatically discover local server token from ~/.pixel-agents/
+  host: "127.0.0.1"
+  port: 3100
+  token: null                    # Discovered automatically if null

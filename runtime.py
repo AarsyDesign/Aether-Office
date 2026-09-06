@@ -274,6 +274,8 @@ class OfficeRuntime:
         orchestrator: Any,
         config: Optional[RuntimeConfig] = None,
         event_bus: Optional[EventBus] = None,
+        enable_pixel_bridge: bool = False,
+        pixel_bridge: Optional[Any] = None,
     ):
         self.orchestrator = orchestrator
         self.config = config or RuntimeConfig()
@@ -294,6 +296,18 @@ class OfficeRuntime:
         # Cold-start self healing: recover any interrupted tasks or reservations immediately
         if hasattr(self.orchestrator, "recover_from_crash"):
             self.orchestrator.recover_from_crash(timeout_seconds=0.0)
+
+        # Pixel Agents Visual Simulator Bridge
+        self.pixel_bridge = pixel_bridge
+        if enable_pixel_bridge and self.pixel_bridge is None:
+            try:
+                from pixel_bridge import PixelAgentsBridge
+                self.pixel_bridge = PixelAgentsBridge()
+            except Exception as e:
+                logger.warning(f"Could not initialize PixelAgentsBridge: {e}")
+
+        if self.pixel_bridge and self.event_bus:
+            self.pixel_bridge.attach_to_event_bus(self.event_bus)
 
     @property
     def is_running(self) -> bool:
@@ -367,6 +381,12 @@ class OfficeRuntime:
         if hasattr(self.orchestrator, "db") and self.orchestrator.db:
             try:
                 self.orchestrator.db.release_scheduler_lock(lock_name="office_scheduler")
+            except Exception:
+                pass
+
+        if getattr(self, "pixel_bridge", None):
+            try:
+                self.pixel_bridge.close()
             except Exception:
                 pass
 
