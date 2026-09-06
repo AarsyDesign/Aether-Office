@@ -9,7 +9,7 @@
 
 *Transform human vision and project briefs into real, working software through a fully autonomous, structured multi-agent AI workforce.*
 
-[⚡ Quickstart](#-quickstart--installation) • [🚀 5 Core Commands](#-5-core-commands-how-to-use) • [🤖 AI Configuration](#-ai-configuration-configyaml) • [❓ FAQ](#-practical-guide--faq) • [🏛️ Architecture](#-architecture) • [💻 CLI Reference](#-cli-command-reference)
+[⚡ Quickstart](#-quickstart--installation) • [🎮 2D Virtual Office](#-pixel-agents-2d-virtual-office-simulation) • [🔄 Automatic Failover](#-automatic-llm-failover--fallback-chain) • [🚀 5 Core Commands](#-5-core-commands-how-to-use) • [🤖 AI Configuration](#-ai-configuration-configyaml) • [❓ FAQ](#-practical-guide--faq)
 
 </div>
 
@@ -23,6 +23,8 @@ Far more than a simple prompt wrapper, **Aether Office** models a **comprehensiv
 - **100% Autonomous Coordination**: No manual agent selection required. Provide a natural-language prompt or brief file, and the agent hierarchy (PM ➔ Conceptor ➔ Developer ➔ QA) self-organizes to deliver the project.
 - **Real Code Generation**: Writes functional codebases directly to disk under `projects/<project-name>/`.
 - **Adaptive Planning & Quality Gate**: Decomposes complex objectives into a Directed Acyclic Graph (DAG) of discrete tasks and scores plan viability (0-100) before execution.
+- **🎮 2D Pixel-Art Virtual Office**: Native integration with [Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents). Watch your AI employees walk to desks, type, read/write files, and collaborate in a living retro pixel-art office in your browser.
+- **🔄 Automatic LLM Failover Chain**: Zero-downtime execution. If your primary AI model hangs, times out, or exhausts quota, Aether Office automatically falls over in seconds (e.g., NVIDIA NIM ➔ Google Gemini ➔ Groq ➔ OpenRouter).
 
 ---
 
@@ -84,6 +86,86 @@ roles:
 | **OpenRouter** *(Multi-Model)* | `https://openrouter.ai/api/v1` | Broad access to open and commercial models (MiniMax, Nemotron, Llama) |
 | **Ollama / Local** *(Free / Offline)* | `http://localhost:11434/v1` | Fully offline execution with local weights |
 | **Offline Mock Mode** | *No setup required* | Append `--mock` to any command for instant offline dry runs |
+
+---
+
+## 🎮 Pixel Agents 2D Virtual Office Simulation
+
+Aether Office includes native integration with **[Pixel Agents](https://github.com/pixel-agents-hq/pixel-agents)**, transforming CLI agent executions into an interactive **2D retro pixel-art office**:
+
+- 🚶 **Live Movement**: AI agents walk to their assigned desks, sit, and start typing.
+- 💬 **Speech & Thought Bubbles**: Read real-time agent dialogues, reasoning, and plans.
+- 🛠️ **Tool & Terminal Visualization**: See agents interact with files, bash commands, and test suites.
+
+### How to Activate the 2D Visualization:
+
+1. **Start the Pixel Agents Server**:
+   Open a separate terminal window and run:
+   ```bash
+   npx pixel-agents --port 3100
+   ```
+   *(First run will prompt to install `pixel-agents`; press Enter to proceed).*
+
+2. **Open the 2D Office in Your Browser**:
+   Open the URL printed in the terminal, for example:
+   ```text
+   http://127.0.0.1:3100/?token=YOUR_ACCESS_TOKEN
+   ```
+
+3. **Verify Configuration in `config.yaml`**:
+   Ensure `pixel_agents` is enabled (it automatically discovers your token from `~/.pixel-agents/config.json`):
+   ```yaml
+   pixel_agents:
+     enabled: true
+     auto_discover: true
+     host: "127.0.0.1"
+     port: 3100
+   ```
+
+4. **Run Any Aether Office Command**:
+   ```powershell
+   .\aether.bat run "Build a weather forecast CLI app"
+   ```
+   *Watch Budi Santoso (PM), Dewi Lestari (Conceptor), Eko Prasetyo (Developer), and Ratna Sari (QA) walk around and collaborate in real-time in the pixel-art office!*
+
+---
+
+## 🔄 Automatic LLM Failover & Fallback Chain
+
+Never worry about models freezing, rate limits (429), timeouts, or exhausted quotas (401/403). Aether Office features an **autonomous fallback chain**:
+
+```mermaid
+flowchart LR
+    A[Primary Model\nNVIDIA NIM Kimi K3] -->|Timeout / Error| B[Fallback 1\nGoogle Gemini 3.6 Flash]
+    B -->|Timeout / Error| C[Fallback 2\nGroq Qwen 3.8 27B]
+    C -->|Timeout / Error| D[Fallback 3\nOpenRouter MiniMax M3]
+    D -->|Success| E[Seamless Execution]
+    A -->|Success| E
+    B -->|Success| E
+    C -->|Success| E
+```
+
+### Configuration in `config.yaml`:
+```yaml
+llm:
+  endpoint: "https://integrate.api.nvidia.com/v1"
+  model: "deepseek-ai/deepseek-v4-flash-0731"
+  timeout: 45           # 45s fast timeout (prevents long freezes)
+  max_retries: 2        # Retries before auto-failover
+
+  # Fallback chain: sequentially attempted on error
+  fallbacks:
+    - gemini
+    - groq
+    - openrouter
+```
+
+When an issue occurs, Aether Office logs the transition smoothly:
+```text
+[!] Attempt 1/2 [primary (moonshotai/kimi-k3)]: Request timed out (45s)...
+[>>] [LLM Failover] primary (moonshotai/kimi-k3) unavailable. Switching to gemini...
+SUCCESS! Received response from Google Gemini.
+```
 
 ---
 
