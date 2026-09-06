@@ -7,157 +7,168 @@
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-*Ubah visi dan ide Anda menjadi perangkat lunak nyata melalui organisasi AI Multi-Agent yang otonom dan terstruktur.*
+*Transform human vision and project briefs into real, working software through a fully autonomous, structured multi-agent AI workforce.*
 
-[⚡ Quickstart](#-quickstart--cara-instalasi) • [🚀 5 Perintah Utama](#-5-perintah-utama-cara-memakainya) • [🤖 Konfigurasi AI](#-konfigurasi-ai-configyaml) • [❓ FAQ](#-panduan-praktis--tanya-jawab-faq) • [🏛️ Arsitektur](#-arsitektur)
+[⚡ Quickstart](#-quickstart--installation) • [🚀 5 Core Commands](#-5-core-commands-how-to-use) • [🤖 AI Configuration](#-ai-configuration-configyaml) • [❓ FAQ](#-practical-guide--faq) • [🏛️ Architecture](#-architecture) • [💻 CLI Reference](#-cli-command-reference)
 
 </div>
 
 ---
 
-## 🌟 Apa Itu Aether Office?
+## 🌟 What is Aether Office?
 
-Bukan sekadar wrapper prompt biasa, **Aether Office** memodelkan **organisasi AI otonom terstruktur secara menyeluruh**:
-- **30+ Karyawan AI Spesialis** di **8 Departemen** (*Engineering, Product, Design, Marketing, Research, Operations, Business, Support*).
-- **100% Otonom**: Anda tidak perlu memilih peran agen secara manual. Cukup ketik ide atau berikan file brief, tim agen (PM ➔ Conceptor ➔ Developer ➔ QA) akan bekerja secara terkoordinasi.
-- **Eksekusi Proyek Nyata**: Agen menghasilkan berkas kode nyata di disk pada folder `projects/<nama-proyek>/`.
-- **Adaptive Planning & Evaluator**: Memecah tugas menjadi graf dependensi (DAG) dan menilai kualitas rancangan (skor 0-100) sebelum dieksekusi.
+Far more than a simple prompt wrapper, **Aether Office** models a **comprehensive, autonomous virtual software company**:
+- **30+ Specialized AI Employees** distributed across **8 Departments** (*Engineering, Product, Design, Marketing, Research, Operations, Business, Support*).
+- **100% Autonomous Coordination**: No manual agent selection required. Provide a natural-language prompt or brief file, and the agent hierarchy (PM ➔ Conceptor ➔ Developer ➔ QA) self-organizes to deliver the project.
+- **Real Code Generation**: Writes functional codebases directly to disk under `projects/<project-name>/`.
+- **Adaptive Planning & Quality Gate**: Decomposes complex objectives into a Directed Acyclic Graph (DAG) of discrete tasks and scores plan viability (0-100) before execution.
 
 ---
 
-## ⚡ Quickstart — Cara Instalasi
+## ⚡ Quickstart — Installation
 
-### Langkah 1: Setup Lingkungan (1-Klik di Windows)
-Cukup jalankan script batch berikut di terminal:
+### Step 1: One-Click Environment Setup (Windows)
+Run the automated setup script in your terminal:
 ```cmd
 .\setup.bat
 ```
-> *Script ini secara otomatis membuat virtual environment `.venv` dan memasang seluruh dependensi Python yang dibutuhkan.*
+> *This script automatically creates a `.venv` virtual environment and installs all necessary runtime dependencies.*
+
+### Manual Setup (Optional)
+```bash
+python -m venv .venv
+# On Windows:
+.\.venv\Scripts\activate
+# On Linux/macOS:
+source .venv/bin/activate
+
+pip install -e .
+```
 
 ---
 
-## 🤖 Konfigurasi AI (`config.yaml`)
+## 🤖 AI Configuration (`config.yaml`)
 
-Sebelum menjalankan agen untuk menghasilkan kode, pastikan konfigurasi AI Anda di file **[config.yaml](config.yaml)** sudah terisi:
+Before executing agents with live LLMs, configure your provider in **[config.yaml](config.yaml)**:
 
 ```yaml
 llm:
-  endpoint: "https://openrouter.ai/api/v1"   # Endpoint AI OpenAI-compatible
-  api_key: "sk-or-v1-xxxxxxxxxxxxxxxx"      # API Key Anda
-  model: "meta-llama/llama-3.3-70b-instruct" # Nama model yang digunakan
+  endpoint: "https://openrouter.ai/api/v1"   # Any OpenAI-compatible endpoint
+  api_key: "sk-or-v1-xxxxxxxxxxxxxxxx"      # Your API key
+  model: "meta-llama/llama-3.3-70b-instruct" # Default model
 ```
 
-### Pilihan Penyedia AI yang Didukung:
-| Provider | Endpoint | Catatan |
+### Supported AI Providers:
+| Provider | Endpoint | Notes |
 | :--- | :--- | :--- |
-| **OpenRouter** *(Cloud)* | `https://openrouter.ai/api/v1` | Sangat direkomendasikan, tersedia banyak model gratis & berbayar |
-| **Groq** *(Cloud Super Cepat)* | `https://api.groq.com/openai/v1` | Sangat cepat untuk iterasi kode |
-| **Ollama** *(Lokal Gratis)* | `http://localhost:11434/v1` | Tanpa internet, pastikan Ollama sudah aktif |
-| **Local Proxy / 9router** | `http://localhost:20128/v1` | Pastikan server proxy lokal Anda sudah dinyalakan |
-| **Mode Mock / Offline** | *Tidak butuh konfigurasi* | Tambahkan flag `--mock` untuk simulasi instan gratis |
+| **OpenRouter** *(Cloud)* | `https://openrouter.ai/api/v1` | Recommended; broad access to open and commercial models |
+| **Groq** *(High Speed)* | `https://api.groq.com/openai/v1` | Fast inference for quick coding iterations |
+| **Ollama** *(Local / Free)* | `http://localhost:11434/v1` | Fully offline; ensure Ollama is running locally |
+| **Local Proxy / 9router** | `http://localhost:20128/v1` | Ensure your local proxy server is started before running |
+| **Offline Mock Mode** | *No setup required* | Append `--mock` to any command for instant offline dry runs |
 
 ---
 
-## 🚀 5 Perintah Utama (Cara Memakainya)
+## 🚀 5 Core Commands (How to Use)
 
-Jalankan perintah-perintah ini di **Terminal Windows (PowerShell / CMD)**:
+Run these commands from your **Windows Terminal (PowerShell / Command Prompt)**:
 
-### 1️⃣ Cek Kesehatan Kantor & Kesiapan Agen
-Memeriksa status runtime kantor, scheduler, dan jumlah karyawan yang siap bertugas:
+### 1️⃣ Check Office Health & Agent Readiness
+Inspect runtime status, heartbeat scheduler, and employee availability:
 ```powershell
 .\aether.bat office status
 ```
 
-### 2️⃣ Cek Daftar 30+ Karyawan Spesialis
-Melihat seluruh daftar karyawan AI, divisi, keahlian, dan status ketersediaan:
+### 2️⃣ List 30+ Specialized Workforce Employees
+View all AI team members, departments, skill sets, and availability:
 ```powershell
 .\aether.bat employees
 ```
 
-### 3️⃣ Jalankan Pembuatan Aplikasi (Langsung Ketik Ide Anda)
-Cukup ketik ide atau instruksi yang ingin dibuat, agen akan langsung bekerja secara otonom:
+### 3️⃣ Generate a New Application (Direct Prompt)
+Provide an application prompt directly in quotes; the autonomous team will plan, design, code, and test it:
 ```powershell
-.\aether.bat run "Buat aplikasi Kasir POS Desktop dengan SQLite"
+.\aether.bat run "Build a REST API for task management with SQLite"
 ```
-*(Ingin uji coba cepat tanpa API key? Tambahkan `--mock` di akhir perintah).*
+*(Tip: Append `--mock` for an instant, offline demonstration without using an API key).*
 
-### 4️⃣ Atau Jalankan dari File Brief yang Sudah Ditulis
-Jika Anda sudah menyiapkan dokumen brief proyek (misal di folder `briefs/`):
+### 4️⃣ Generate from a Project Brief Document
+Execute project creation using a structured Markdown brief:
 ```powershell
-.\aether.bat run briefs/cashier-pondok.md
+.\aether.bat run briefs/todo-app.md
 ```
 
-### 5️⃣ Cek Daftar Seluruh Proyek yang Pernah Dibuat
-Melihat riwayat seluruh proyek yang telah diselesaikan atau sedang berjalan:
+### 5️⃣ List All Created Projects
+Review the status and IDs of previously generated projects:
 ```powershell
 .\aether.bat list
 ```
 
 ---
 
-## 📁 Di Mana Hasil Kodingan Disimpan?
+## 📁 Where Are Code Deliverables Saved?
 
-Setiap kali Anda menjalankan perintah `run`, Aether Office akan otomatis membuat folder proyek baru di:
+Every time `run` executes, Aether Office creates an isolated project directory:
 ```text
-projects/<nama-proyek>-<timestamp>/
-  ├── core.py         # Kode utama logika aplikasi
-  ├── test_core.py    # Unit test otomatis yang dibuat oleh agen
-  └── docs/           # Rangkuman arsitektur dari PM & Conceptor
+projects/<project-name>-<timestamp>/
+  ├── core.py         # Primary application logic and implementation
+  ├── test_core.py    # Automated test cases authored by the team
+  └── docs/           # Architecture specs and acceptance criteria
 ```
 
 ---
 
-## 📖 Panduan Praktis & Tanya Jawab (FAQ)
+## 📖 Practical Guide & FAQ
 
-### ❓ 1. Apakah Saya Harus Memilih Agent Secara Manual?
-> **TIDAK PERLU! Sistem bekerja 100% Otonom.**
+### ❓ 1. Do I Need to Manually Choose Agents?
+> **NO. The pipeline is 100% Autonomous.**
 
-Saat Anda menjalankan perintah `.\aether.bat run "..."`, Anda tidak perlu memilih siapa PM, desainer, atau programmer-nya. Sistem Aether Office mengorkestrasi alur kerja secara otomatis:
-1. **Project Manager (`Budi Santoso`)** ➔ Membedah brief Anda menjadi daftar tugas terstruktur.
-2. **Product Conceptor (`Siti Rahma`)** ➔ Menyusun spesifikasi teknis dan kriteria penerimaan.
-3. **Developer (`Eko Prasetyo`)** ➔ Menulis berkas kode nyata file demi file.
-4. **QA Engineer (`Ratna Sari`)** ➔ Mengaudit sintaks dan memvalidasi kode.
+When you run `.\aether.bat run "..."`, you do not have to select who acts as PM, architect, or developer. The built-in 4-phase pipeline executes automatically:
+1. **Project Manager (`Budi Santoso`)** ➔ Breaks down your brief into structured, dependent milestones.
+2. **Product Conceptor (`Siti Rahma`)** ➔ Compiles technical specifications and acceptance criteria.
+3. **Developer (`Eko Prasetyo`)** ➔ Generates the implementation code file by file.
+4. **QA Engineer (`Ratna Sari`)** ➔ Validates syntax, reviews code quality, and verifies outputs.
 
 ---
 
-### ❓ 2. Apakah Dijalankan di Terminal atau Cukup Perintah di IDE?
-Anda memiliki dua opsi fleksibel:
+### ❓ 2. Should I Run in Terminal or via IDE Commands?
+Both methods are fully supported:
 
-* **Opsi A: Terminal Bawaan IDE (Sangat Disarankan)**
-  Buka terminal terintegrasi di IDE Anda (tekan shortcut ``Ctrl + ` ``), lalu jalankan perintah seperti biasa:
+* **Option A: Built-in IDE Terminal (Recommended)**
+  Open the integrated terminal in Antigravity or VS Code (press ``Ctrl + ` ``), then run:
   ```powershell
   .\aether.bat office status
-  .\aether.bat run "Buat REST API sederhana dengan FastAPI"
+  .\aether.bat run "Build a CLI expense tracker"
   ```
-  > 💡 **Penting untuk Windows PowerShell:** Selalu gunakan awalan `.\` (yaitu `.\aether.bat`), bukan `aether` biasa tanpa titik.
+  > 💡 **PowerShell Tip:** Always use the `.\` prefix (e.g., `.\aether.bat` or `.\aether`), as PowerShell restricts executing from the current directory without it. Alternatively, use `python cli.py <command>`.
 
-* **Opsi B: Cukup Perintah Chat ke AI di IDE (Pair Programming)**
-  Jika Anda sedang menggunakan Antigravity IDE, Anda cukup menulis pesan di chat:
-  > *"Tolong jalankan pipeline pengerjaan untuk aplikasi kasir berdasarkan briefs/cashier-pondok.md"*
+* **Option B: Pair Programming Chat in IDE**
+  If using Antigravity IDE, you can ask the AI assistant directly in the chat:
+  > *"Please run the project pipeline based on briefs/todo-app.md"*
   
-  Asisten AI akan langsung mengeksekusinya di latar belakang dan melaporkan hasilnya kepada Anda.
+  The assistant will execute the CLI engine in the background and report results.
 
 ---
 
-### ❓ 3. Apa Beda `office status` dengan `status <project_id>`?
-* **`.\aether.bat office status`** ➔ Memeriksa **kesehatan seluruh kantor** (runtime, detak scheduler, kapasitas karyawan).
-* **`.\aether.bat status <project_id>`** ➔ Memeriksa **detail satu proyek tertentu** yang sudah dibuat (contoh: `.\aether.bat status buat-aplikasi-kasir-1788670162`).
+### ❓ 3. What Is the Difference Between `office status` and `status <project_id>`?
+* **`.\aether.bat office status`** ➔ Checks **global office health** (runtime engine status, scheduler heartbeat, workforce capacity).
+* **`.\aether.bat status <project_id>`** ➔ Checks **progress of a specific project** (e.g., `.\aether.bat status todo-app-1788670162`).
 
 ---
 
-### ❓ 4. Error `[WinError 10061] No connection could be made...` Apa Artinya?
-Pesan ini muncul ketika Aether Office mencoba menghubungi AI, tetapi server AI yang tertera di `config.yaml` **belum aktif atau mati**.
-* **Solusinya:**
-  1. Jika menggunakan router lokal (port 20128), pastikan server lokal Anda sudah dijalankan.
-  2. Atau ganti `endpoint` dan `api_key` di [config.yaml](config.yaml) ke cloud provider seperti OpenRouter / Groq.
-  3. Atau gunakan mode offline instan dengan menambahkan flag `--mock`:
+### ❓ 4. What Does `[WinError 10061] Connection refused` Mean?
+This error occurs when Aether Office attempts to contact the LLM endpoint in `config.yaml`, but the local server/proxy is **not running or unreachable**.
+* **Remedies:**
+  1. If using a local router (e.g., port 20128), start your local proxy process first.
+  2. Or update `endpoint` and `api_key` in [config.yaml](config.yaml) to a cloud provider like OpenRouter or Groq.
+  3. Or test in offline simulation mode using `--mock`:
      ```powershell
-     .\aether.bat run "Ide Proyek Anda" --mock
+     .\aether.bat run "Your project idea" --mock
      ```
 
 ---
 
-## 🏛️ Arsitektur
+## 🏛️ Architecture
 
 ```mermaid
 flowchart TD
@@ -182,14 +193,33 @@ flowchart TD
     subgraph Workforce_Pool [Workforce Pool]
         Matcher --> Emp1[Budi Santoso - PM Lead]
         Matcher --> Emp2[Siti Rahma - Product Conceptor]
-        Matcher --> Emp3[Eko Prasetyo - Developer]
+        Matcher --> Emp3[Eko Prasetyo - Developer Lead]
         Matcher --> Emp4[Ratna Sari - QA Engineer]
-        Matcher --> EmpN[... 30+ Karyawan di 8 Divisi]
+        Matcher --> EmpN[... 30+ Specialists across 8 Divisions]
     end
 ```
 
 ---
 
-## 🤝 Lisensi
+## 💻 CLI Command Reference
 
-Proyek ini dilisensikan di bawah [MIT License](LICENSE).
+Execute globally via `.\aether.bat <command>` or `python cli.py <command>`:
+
+| Command | Description |
+| :--- | :--- |
+| `aether run "<brief>"` | Run end-to-end autonomous application generation |
+| `aether office status` | Inspect office operational status, queue, and runtime |
+| `aether employees` | Display workforce directory, skills, and availability |
+| `aether departments` | List all 8 organizational divisions |
+| `aether objective list` | Monitor all registered business objectives |
+| `aether objective create "<title>"` | Register a new business objective with criteria |
+| `aether models` *(alias: `router`)* | Inspect LLM router status and role-model mapping |
+| `aether list` | List all existing project workspaces |
+| `aether status <project_id>` | Inspect task details and execution history for a project |
+| `aether usage` | Report token consumption and estimated LLM costs |
+
+---
+
+## 🤝 License
+
+This project is licensed under the [MIT License](LICENSE).
